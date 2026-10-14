@@ -1,0 +1,1836 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calculadora acuícola · gestión de estanques</title>
+<style>
+:root{
+  --verde:#1f6f4a; --verde-osc:#14503a; --verde-suave:#e6f2ea; --crema:#faf8f2;
+  --tierra:#8b6b4a; --texto:#222a26; --gris:#66736c; --borde:#d7ddd8; --blanco:#fff;
+  --ok:#1a7f4b; --ok-bg:#e3f4ea; --err:#b3261e; --err-bg:#fdeceb;
+  --adv:#9a6200; --adv-bg:#fff4dd; --rec:#1d5fa8; --rec-bg:#e7f0fb;
+  --real:#1f6f4a; --est:#9a6200; --proy:#1d5fa8;
+}
+*{box-sizing:border-box}
+html{font-size:16px}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto);background:var(--crema);line-height:1.45}
+.skip{position:absolute;left:-999px;top:0;background:#000;color:#fff;padding:8px 12px;z-index:100}
+.skip:focus{left:8px;top:8px}
+header.app{background:var(--verde-osc);color:#fff;padding:12px 16px;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between}
+header.app h1{font-size:1.25rem;margin:0}
+header.app small{display:block;color:#cfe5d8;font-weight:400}
+.estado-guardado{font-size:.85rem;color:#cfe5d8}
+nav.tabs{display:flex;gap:4px;overflow-x:auto;background:var(--verde);padding:6px 8px 0;position:sticky;top:0;z-index:20;-webkit-overflow-scrolling:touch}
+nav.tabs button{flex:0 0 auto;border:0;background:transparent;color:#e6f2ea;padding:11px 14px;font:inherit;font-size:.95rem;border-radius:8px 8px 0 0;cursor:pointer;min-height:44px;white-space:nowrap}
+nav.tabs button[aria-selected="true"]{background:var(--crema);color:var(--verde-osc);font-weight:600}
+nav.tabs button:hover{background:rgba(255,255,255,.15)}
+nav.tabs .cuenta{display:inline-block;min-width:1.4em;padding:0 6px;margin-left:6px;border-radius:10px;font-size:.78rem;background:var(--err);color:#fff;text-align:center}
+nav.tabs .cuenta.adv{background:#d89a1d}
+main{max-width:1200px;margin:0 auto;padding:16px}
+h2{font-size:1.2rem;margin:0 0 4px}
+h3{font-size:1.05rem;margin:18px 0 8px}
+p.sub{margin:0 0 12px;color:var(--gris)}
+.tarjeta{background:var(--blanco);border:1px solid var(--borde);border-radius:12px;padding:14px;margin-bottom:14px}
+.tarjeta>h3:first-child{margin-top:0}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.grid.g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.grid.g3{grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+.kpi{background:var(--blanco);border:1px solid var(--borde);border-radius:12px;padding:12px}
+.kpi .tit{font-size:.82rem;color:var(--gris)}
+.kpi .val{font-size:1.45rem;font-weight:650;margin-top:2px;word-break:break-word}
+.kpi .det{font-size:.8rem;color:var(--gris)}
+.kpi.pos .val{color:var(--ok)} .kpi.neg .val{color:var(--err)}
+.campo{display:flex;flex-direction:column;gap:3px}
+.campo label{font-size:.88rem;font-weight:600}
+.campo .entrada{display:flex;align-items:stretch}
+.campo input,.campo select,.campo textarea{font:inherit;width:100%;min-height:44px;padding:8px 10px;border:1px solid #aab5ae;border-radius:8px;background:#fff;color:var(--texto)}
+.campo .entrada input{border-top-right-radius:0;border-bottom-right-radius:0}
+.campo .unidad{display:flex;align-items:center;padding:0 10px;background:var(--verde-suave);border:1px solid #aab5ae;border-left:0;border-radius:0 8px 8px 0;font-size:.85rem;color:var(--verde-osc);white-space:nowrap}
+.campo textarea{min-height:70px}
+.campo .ayuda{font-size:.78rem;color:var(--gris)}
+.campo input[readonly]{background:#f1f4f2}
+input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid #f0b429;outline-offset:1px}
+button.btn,a.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:8px 16px;border:0;border-radius:8px;background:var(--verde);color:#fff;font:inherit;font-weight:600;cursor:pointer;text-decoration:none}
+button.btn:hover{background:var(--verde-osc)}
+button.btn.sec{background:#fff;color:var(--verde-osc);border:1px solid var(--verde)}
+button.btn.peligro{background:var(--err)}
+button.btn.chico{min-height:36px;padding:4px 10px;font-size:.88rem}
+.acciones{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.tabla-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{padding:7px 9px;border-bottom:1px solid var(--borde);text-align:right;white-space:nowrap}
+th:first-child,td:first-child,td.izq,th.izq{text-align:left}
+thead th{background:var(--verde-suave);color:var(--verde-osc);position:sticky;top:0}
+tr.anulado td{text-decoration:line-through;color:var(--gris)}
+tfoot td{font-weight:700;background:#f6f8f6}
+.etq{display:inline-block;padding:1px 8px;border-radius:10px;font-size:.74rem;font-weight:700;vertical-align:middle;border:1px solid}
+.etq.real{color:var(--real);border-color:var(--real);background:var(--verde-suave)}
+.etq.est{color:var(--est);border-color:var(--est);background:var(--adv-bg)}
+.etq.proy{color:var(--proy);border-color:var(--proy);background:var(--rec-bg)}
+.etq.ej{color:#6b3fa0;border-color:#6b3fa0;background:#f1eafa}
+.pos{color:var(--ok)} .neg{color:var(--err)}
+.alerta{border-left:6px solid;border-radius:8px;padding:10px 12px;margin-bottom:10px;background:#fff;border-top:1px solid var(--borde);border-right:1px solid var(--borde);border-bottom:1px solid var(--borde)}
+.alerta.error{border-left-color:var(--err);background:var(--err-bg)}
+.alerta.advertencia{border-left-color:#d89a1d;background:var(--adv-bg)}
+.alerta.recomendacion{border-left-color:var(--rec);background:var(--rec-bg)}
+.alerta .nivel{font-weight:700;text-transform:uppercase;font-size:.78rem;letter-spacing:.04em}
+.alerta dl{margin:6px 0 0;display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:.9rem}
+.alerta dt{font-weight:600} .alerta dd{margin:0}
+.aviso{border-radius:8px;padding:9px 12px;margin:8px 0;font-size:.9rem;border:1px solid}
+.aviso.error{background:var(--err-bg);border-color:var(--err);color:#6f1511}
+.aviso.adv{background:var(--adv-bg);border-color:#d89a1d;color:#5c3b00}
+.aviso.info{background:var(--rec-bg);border-color:var(--rec);color:#12396a}
+.aviso.ok{background:var(--ok-bg);border-color:var(--ok);color:#0f4d2c}
+.vacio{color:var(--gris);padding:18px;text-align:center;border:1px dashed var(--borde);border-radius:10px;background:#fff}
+.formula{font-family:ui-monospace,Consolas,monospace;font-size:.84rem;background:#f4f6f4;border-radius:6px;padding:2px 6px}
+.cargando{display:flex;align-items:center;gap:10px;color:var(--gris);padding:20px}
+.cargando::before{content:"";width:20px;height:20px;border:3px solid var(--borde);border-top-color:var(--verde);border-radius:50%;animation:giro .8s linear infinite}
+@keyframes giro{to{transform:rotate(360deg)}}
+.leyenda{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.82rem;color:var(--gris);margin:4px 0}
+svg.grafico{width:100%;height:auto;max-height:340px;display:block}
+.fila-filtros{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:12px}
+details.plegable{margin:8px 0}
+details.plegable>summary{cursor:pointer;font-weight:600;padding:6px 0}
+dialog{border:0;border-radius:12px;padding:18px;max-width:min(92vw,440px);box-shadow:0 10px 40px rgba(0,0,0,.35)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#222a26;color:#fff;padding:10px 16px;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:60;max-width:92vw}
+#toast.ver{opacity:1}
+#reporte{display:none}
+body.ver-reporte #reporte{display:block;position:fixed;inset:0;overflow:auto;background:#fff;z-index:50;padding:16px}
+.reporte-barra{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.reporte h1{font-size:1.4rem;margin:0 0 2px}
+.reporte table{font-size:.82rem}
+@media (max-width:640px){
+  main{padding:10px}
+  .kpi .val{font-size:1.2rem}
+  th,td{padding:6px 7px}
+  nav.tabs button{padding:10px 11px;font-size:.9rem}
+  .grid,.grid.g2,.grid.g3{grid-template-columns:1fr}
+  .grid.kpis{grid-template-columns:repeat(2,1fr)}
+}
+@media print{
+  body{background:#fff}
+  body>*:not(#reporte){display:none!important}
+  body.ver-reporte #reporte{display:block;position:static;padding:0}
+  .reporte-barra{display:none!important}
+  .tarjeta{break-inside:avoid;border-color:#999}
+  .tabla-wrap{overflow:visible}
+  svg.grafico{max-height:230px}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#principal">Saltar al contenido</a>
+<header class="app">
+  <div><h1>Calculadora acuícola<small>Gestión de estanques · población, biomasa, alimento, F.C.A. y economía</small></h1></div>
+  <div class="estado-guardado" id="estado-guardado" aria-live="polite">Cargando…</div>
+</header>
+<nav class="tabs" id="tabs" role="tablist" aria-label="Secciones"></nav>
+<main id="principal" role="tabpanel" tabindex="-1"><div class="cargando">Cargando la aplicación…</div></main>
+<dialog id="dlg" aria-labelledby="dlg-titulo"><form method="dialog"><h3 id="dlg-titulo" style="margin-top:0"></h3><p id="dlg-texto"></p><div class="acciones"><button class="btn sec" value="no">Cancelar</button><button class="btn peligro" value="si" id="dlg-ok">Confirmar</button></div></form></dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="reporte" class="reporte" aria-label="Reporte imprimible"></div>
+<script>
+/*<PURE>*/
+'use strict';
+/* ==========================================================================
+   NÚCLEO DE CÁLCULO (sin interfaz). Todas las fórmulas están documentadas en
+   FORMULAS (se muestran en la aplicación). Unidades: g, kg, m², m³, ha, días.
+   ========================================================================== */
+const MS_DIA = 86400000;
+const CATEGORIAS_COSTO = ['Semilla (alevines / juveniles)', 'Alimento balanceado', 'Mano de obra', 'Electricidad',
+  'Combustible', 'Medicamentos y tratamientos', 'Fertilizantes y otros insumos', 'Mantenimiento del estanque',
+  'Transporte', 'Otros gastos'];
+const ESTADOS = ['preparado', 'en crianza', 'en cosecha', 'finalizado'];
+const CONFIG_DEF = {
+  moneda: 'PEN',
+  modoClase: true,            // redondeos intermedios como en las hojas de clase (población entera, kg a 2 decimales)
+  fcaTotalMetodo: 'ganancia', // 'ganancia' = alimento ÷ incremento de biomasa | 'cosecha' = alimento ÷ biomasa final (hoja del profesor)
+  diasSinMuestreo: 30,        // recomendación si pasan más días sin medir
+  tolDesvioPct: 200,          // alerta si el incremento diario cambia más de X % respecto al período anterior
+  tolProyPct: 25,             // alerta si el peso real difiere más de X % del plan
+  tolBiomasaPct: 10           // alerta si la biomasa medida difiere más de X % de la calculada
+};
+const FORMULAS = [
+  ['Densidad por área', 'organismos ÷ área (m²)'],
+  ['Densidad por volumen', 'organismos ÷ volumen (m³), con volumen = área × profundidad'],
+  ['Organismos vivos estimados', 'población inicial × supervivencia'],
+  ['Mortalidad estimada', 'población inicial − organismos vivos'],
+  ['Biomasa (kg)', 'población × peso promedio (g) ÷ 1000'],
+  ['Biomasa por hectárea', 'biomasa (kg) × 10 000 ÷ área (m²)'],
+  ['Alimento diario (kg)', 'biomasa (kg) × tasa de alimentación (%) ÷ 100'],
+  ['Alimento de un período (kg)', 'biomasa al inicio × tasa ÷ 100 × días del período'],
+  ['F.C.A.', 'alimento (kg) ÷ incremento de biomasa (kg)'],
+  ['Incremento de biomasa', 'biomasa actual + biomasa retirada − biomasa anterior'],
+  ['Velocidad de crecimiento (g/día)', '(peso actual − peso anterior) ÷ días'],
+  ['Peces a comprar', 'peces sembrados ÷ (1 − mortalidad de transporte)'],
+  ['Cal / fertilizante (kg)', 'dosis (kg/ha) × área (m²) ÷ 10 000'],
+  ['Costo por kg', 'costo total ÷ biomasa producida (kg)'],
+  ['Margen', 'ganancia ÷ ingresos (no disponible si los ingresos son 0)'],
+  ['Punto de equilibrio (kg)', 'costo total ÷ precio de venta por kg'],
+  ['Precio mínimo de venta', 'costo total ÷ biomasa producida (kg)']
+];
+
+/* ---------- utilidades numéricas ---------- */
+const num = (v) => {
+  if (v === null || v === undefined || v === '') return null;
+  const n = typeof v === 'number' ? v : Number(String(v).trim().replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+};
+const r2 = (x) => Math.floor(x * 100 + 0.5 + 1e-9) / 100;   // 2 decimales, mitad hacia arriba (como las hojas)
+const rEnt = (x) => Math.floor(x + 0.5 + 1e-9);
+const techo = (x) => Math.ceil(Math.round(x * 1e6) / 1e6);
+const div = (a, b) => (a === null || b === null || a === undefined || b === undefined || !Number.isFinite(a) || !Number.isFinite(b) || b === 0) ? null : a / b;
+const suma = (arr) => arr.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0);
+const fmt = (x, d = 2) => (x === null || x === undefined || !Number.isFinite(x)) ? '—' :
+  x.toLocaleString('es-PE', { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmtMon = (x, cfg) => (x === null || x === undefined || !Number.isFinite(x)) ? 'N/D' : `${(cfg && cfg.moneda) || 'PEN'} ${fmt(x, 2)}`;
+const esc = (s) => String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let _uidN = 0;
+const uid = (p) => `${p}-${Date.now().toString(36)}${(++_uidN).toString(36)}${Math.floor(Math.random() * 46656).toString(36)}`;
+
+/* ---------- fechas (ISO yyyy-mm-dd) ---------- */
+function parseFecha(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || '');
+  if (!m) return null;
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  return (d.getUTCFullYear() === +m[1] && d.getUTCMonth() === +m[2] - 1 && d.getUTCDate() === +m[3]) ? d : null;
+}
+const fechaISO = (d) => d.toISOString().slice(0, 10);
+const sumarDias = (iso, n) => { const d = parseFecha(iso); return d ? fechaISO(new Date(d.getTime() + Math.round(n) * MS_DIA)) : null; };
+function sumarMeses(iso, n) {
+  const d = parseFecha(iso);
+  if (!d) return null;
+  const y = d.getUTCFullYear() + Math.floor((d.getUTCMonth() + n) / 12), m = (((d.getUTCMonth() + n) % 12) + 12) % 12;
+  const ult = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  return fechaISO(new Date(Date.UTC(y, m, Math.min(d.getUTCDate(), ult))));
+}
+/* con períodos de 30 días las fechas del plan caen el mismo día de cada mes (como en las hojas de clase) */
+const fechaDia = (iso, dia, planDias) => (planDias === 30 && dia >= 0 && Number.isInteger(dia / 30)) ? sumarMeses(iso, dia / 30) : sumarDias(iso, dia);
+const diasEntre = (a, b) => { const da = parseFecha(a), db = parseFecha(b); return (da && db) ? Math.round((db - da) / MS_DIA) : null; };
+const hoyISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const fmtFecha = (iso) => { const d = parseFecha(iso); return d ? `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}` : '—'; };
+
+/* ---------- listas escritas por el usuario ---------- */
+function parseLista(txt) {
+  const partes = String(txt === null || txt === undefined ? '' : txt).replace(/;/g, ' ').replace(/,/g, ' ').split(/\s+/).filter(Boolean);
+  const vals = partes.map(Number);
+  return vals.every(Number.isFinite) ? vals : null;
+}
+function parseRaciones(txt) {
+  const vals = parseLista(txt);
+  if (vals === null) return { ok: false, error: 'Escribe números separados por comas.' };
+  if (!vals.length) return { ok: true, fracs: null };
+  if (vals.length === 1) {
+    const n = vals[0];
+    if (!(n >= 1) || n !== Math.floor(n)) return { ok: false, error: 'Un solo número = veces al día (entero ≥ 1).' };
+    return { ok: true, fracs: Array(n).fill(1 / n) };
+  }
+  if (vals.some((v) => v < 0) || Math.abs(suma(vals) - 100) > 0.5) return { ok: false, error: 'Los porcentajes de las raciones deben sumar 100.' };
+  return { ok: true, fracs: vals.map((v) => v / 100) };
+}
+
+/* ---------- fórmulas básicas ---------- */
+const areaM2 = (e) => { const a = num(e.area); if (a === null) return null; return e.areaUnidad === 'ha' ? a * 10000 : a; };
+const volumenM3 = (area, prof) => (area > 0 && num(prof) > 0) ? area * num(prof) : null;
+const densidad = (n, area) => (n !== null && area > 0) ? n / area : null;
+const vivosEstimados = (pobIni, superv) => (pobIni !== null && superv !== null) ? pobIni * superv / 100 : null;
+const biomasaKg = (pob, pesoG, cfg) => {
+  if (pob === null || pob === undefined || pesoG === null || pesoG === undefined) return null;
+  const b = pob * pesoG / 1000;
+  return cfg && cfg.modoClase ? r2(b) : b;
+};
+const alimentoDiario = (bio, tasa) => (bio === null || tasa === null || bio === undefined || tasa === undefined) ? null : bio * tasa / 100;
+const supervivenciaDesde = (mort) => (mort && mort.length) ? mort.reduce((s, m) => s * (1 - m / 100), 1) * 100 : null;
+function fca(alimento, incremento) {
+  if (alimento === null || alimento === undefined || incremento === null || incremento === undefined) return { valor: null, motivo: 'Faltan datos de alimento o de biomasa.' };
+  if (alimento < 0) return { valor: null, motivo: 'El alimento es negativo.' };
+  if (!(incremento > 0)) return { valor: null, motivo: 'El incremento de biomasa es cero o negativo: el F.C.A. no se puede calcular.' };
+  return { valor: alimento / incremento, motivo: null };
+}
+
+/* ---------- plan de crecimiento ---------- */
+function planDe(e, esp) {
+  const p = e.plan || {};
+  const pick = (a, b) => (Array.isArray(a) && a.length ? a : (Array.isArray(b) ? b : []));
+  return {
+    planDias: num(p.planDias) || (esp && num(esp.planDias)) || 30,
+    pesos: pick(p.pesos, esp && esp.pesosEsperados),
+    mortalidades: pick(p.mortalidades, esp && esp.mortalidadPeriodo),
+    tasas: pick(p.tasas, esp && esp.tasasPeriodo)
+  };
+}
+function interpPlan(pts, t) {
+  if (!pts.length || t < pts[0][0] - 1e-9) return null;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [t0, v0] = pts[i], [t1, v1] = pts[i + 1];
+    if (t <= t1 + 1e-9) return t1 === t0 ? v1 : v0 + (v1 - v0) * (t - t0) / (t1 - t0);
+  }
+  const u = pts[pts.length - 1];
+  return Math.abs(t - u[0]) < 1e-9 ? u[1] : null;
+}
+function interpPlanTol(pts, t) {
+  const v = interpPlan(pts, t);
+  if (v !== null || !pts.length) return v;
+  const u = pts[pts.length - 1];
+  return (t > u[0] && t - u[0] <= 3) ? u[1] : null;   // hasta 3 días después del fin del plan se usa el último peso
+}
+const puntosPlan = (plan, pesoIni) => [[0, pesoIni]].concat(plan.pesos.map((w, i) => [(i + 1) * plan.planDias, w]));
+function factorSupervivencia(mort, planDias, t, d) {
+  let f = 1, a = t;
+  const b = t + d;
+  while (a < b - 1e-9) {
+    const idx = Math.floor(a / planDias + 1e-9);
+    const o = Math.min(b, (idx + 1) * planDias) - a;
+    const m = idx < mort.length ? mort[idx] : 0;
+    f *= Math.pow(1 - m / 100, o / planDias);
+    a += o;
+  }
+  return f;
+}
+const tasaPlanEn = (plan, dias) => plan.tasas.length ? plan.tasas[Math.min(Math.max(0, Math.floor(dias / plan.planDias + 1e-9)), plan.tasas.length - 1)] : null;
+
+/* ---------- proyección ----------
+   o: { cfg, inicioDias, fechaSiembra, pobInicial, pesoInicial, pasoDias, horizonteDias, planDias,
+        modelo:{tipo:'pesos'|'gdp'|'tce', pesos, pesoSiembra, gdp, tce}, ajustarAReal,
+        mortalidades, supervivenciaConstante, tasas, pesoObjetivo }                         */
+function proyectar(o) {
+  const cfg = o.cfg || CONFIG_DEF;
+  const errores = [], avisos = [];
+  const planDias = o.planDias || 30;
+  let t = o.inicioDias || 0;
+  let pob = o.pobInicial;
+  const w0 = o.pesoInicial;
+  if (!(pob > 0) || !(w0 > 0)) return { rows: [], resumen: null, errores: ['Faltan la población o el peso de partida para proyectar.'], avisos };
+  if (!(o.pasoDias > 0) || !(o.horizonteDias > 0)) return { rows: [], resumen: null, errores: ['El paso y el horizonte de la proyección deben ser mayores que 0.'], avisos };
+  const fin = t + o.horizonteDias;
+  const m = o.modelo || {};
+  let pts = null, escala = 1;
+  if (m.tipo === 'pesos') {
+    if (!m.pesos || !m.pesos.length) return { rows: [], resumen: null, errores: ['No hay pesos esperados por período. Escríbelos o configura la especie.'], avisos };
+    pts = puntosPlan({ planDias, pesos: m.pesos }, m.pesoSiembra);
+    const pp = interpPlan(pts, t);
+    if (pp === null) return { rows: [], resumen: null, errores: ['El plan de pesos no cubre el día de inicio de la proyección.'], avisos };
+    if (o.ajustarAReal && pp > 0) escala = w0 / pp;
+  } else if (m.tipo === 'gdp') {
+    if (num(m.gdp) === null) return { rows: [], resumen: null, errores: ['Indica la ganancia diaria de peso (g/día).'], avisos };
+    avisos.push('Supuesto explícito: la ganancia de peso diaria se mantiene constante.');
+  } else if (m.tipo === 'tce') {
+    if (num(m.tce) === null) return { rows: [], resumen: null, errores: ['Indica la tasa de crecimiento específico (%/día).'], avisos };
+    avisos.push('Supuesto explícito: la tasa de crecimiento específico (%/día) se mantiene constante.');
+  } else return { rows: [], resumen: null, errores: ['Elige un modelo de crecimiento.'], avisos };
+  const pesoEn = (tt) => {
+    if (m.tipo === 'pesos') { const v = interpPlan(pts, tt); return v === null ? null : v * escala; }
+    if (m.tipo === 'gdp') return w0 + m.gdp * (tt - (o.inicioDias || 0));
+    return w0 * Math.exp(m.tce / 100 * (tt - (o.inicioDias || 0)));
+  };
+  if (o.supervivenciaConstante) avisos.push('Supuesto explícito: la supervivencia se mantiene sin cambios (sin mortalidad).');
+  else if (!(o.mortalidades || []).length) avisos.push('No hay mortalidades por período: se asume 0 % de mortalidad.');
+  const tasas = o.tasas || [];
+  if (!tasas.length) avisos.push('No hay tasas de alimentación: no se calcula el alimento ni el F.C.A.');
+  else avisos.push('Si hay más períodos que tasas, se repite la última tasa.');
+
+  const filaIni = (tt, p, w) => ({ dia: tt, fecha: o.fechaSiembra ? fechaDia(o.fechaSiembra, tt, planDias) : null, peso: w, pob: p, biomasa: biomasaKg(p, w, cfg), tasa: null, alimento: null, alimentoAcum: 0, incremento: null, fca: null, fcaAcum: null });
+  const rows = [filaIni(t, pob, w0)];
+  let truncado = null, alimAcum = 0, alimOk = tasas.length > 0;
+  while (t < fin - 1e-9) {
+    const d = Math.min(o.pasoDias, fin - t);
+    const tn = t + d;
+    const wn = pesoEn(tn);
+    if (wn === null || !(wn > 0)) { truncado = t; break; }
+    const f = o.supervivenciaConstante ? 1 : factorSupervivencia(o.mortalidades || [], planDias, t, d);
+    let pn = pob * f;
+    if (cfg.modoClase) pn = rEnt(pn);
+    const bioIni = rows[rows.length - 1].biomasa;
+    const bioFin = biomasaKg(pn, wn, cfg);
+    const tasa = tasas.length ? tasas[Math.min(Math.floor(t / planDias + 1e-9), tasas.length - 1)] : null;
+    let alim = tasa === null ? null : bioIni * tasa / 100 * d;
+    if (alim !== null && cfg.modoClase) alim = r2(alim);
+    if (alim !== null) alimAcum += alim;
+    const inc = bioFin - bioIni;
+    const fp = fca(alim, inc).valor;
+    const fa = alimOk ? fca(alimAcum, bioFin - rows[0].biomasa).valor : null;
+    rows.push({ dia: tn, fecha: o.fechaSiembra ? fechaDia(o.fechaSiembra, tn, planDias) : null, peso: wn, pob: pn, biomasa: bioFin, tasa, alimento: alim, alimentoAcum: alimOk ? alimAcum : null, incremento: inc, fca: fp, fcaAcum: fa });
+    pob = pn; t = tn;
+  }
+  if (truncado !== null) avisos.push(`El plan de pesos termina antes del horizonte: la proyección se detiene en el día ${fmt(truncado, 0)}.`);
+  const u = rows[rows.length - 1], p0 = rows[0];
+  let diaObj = null, fechaObj = null, alcanza = false;
+  if (o.pesoObjetivo > 0) {
+    if (p0.peso >= o.pesoObjetivo) { alcanza = true; diaObj = p0.dia; }
+    else for (let i = 1; i < rows.length; i++) {
+      if (rows[i].peso >= o.pesoObjetivo) {
+        const a = rows[i - 1], b = rows[i];
+        diaObj = a.dia + (o.pesoObjetivo - a.peso) / (b.peso - a.peso) * (b.dia - a.dia);
+        alcanza = true; break;
+      }
+    }
+    if (alcanza && o.fechaSiembra) fechaObj = fechaDia(o.fechaSiembra, diaObj, planDias);
+  }
+  const incTotal = u.biomasa - p0.biomasa;
+  return {
+    rows, errores, avisos,
+    resumen: {
+      pesoFinal: u.peso, pobFinal: u.pob, biomasaFinal: u.biomasa, incrementoTotal: incTotal,
+      alimentoTotal: alimOk ? alimAcum : null, fcaProyectado: alimOk ? fca(alimAcum, incTotal).valor : null,
+      diaObjetivo: diaObj, fechaObjetivo: fechaObj, alcanzaObjetivo: alcanza, diaFinal: u.dia, truncadoEnDia: truncado
+    }
+  };
+}
+
+/* ---------- historial de mediciones ---------- */
+function construirHistorial(state, e, pobIni, pesoIni) {
+  const cfg = state.config;
+  const regs = state.muestreos.filter((m) => m.estanqueId === e.id && m.activo !== false)
+    .sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : (a.creado || 0) - (b.creado || 0)));
+  const bio0 = (pobIni !== null && pesoIni !== null) ? biomasaKg(pobIni, pesoIni, cfg) : null;
+  let pobPrev = pobIni, bioPrev = bio0, alimAcum = 0, retAcum = 0, fechaPrev = e.fechaSiembra, pesoPrev = pesoIni;
+  const out = [];
+  for (const m of regs) {
+    const peso = num(m.peso);
+    let pob, pobFuente;
+    if (num(m.poblacion) !== null) { pob = num(m.poblacion); pobFuente = 'registrada'; }
+    else if (num(m.muertos) !== null && pobPrev !== null) { pob = pobPrev - num(m.muertos); pobFuente = 'según mortalidad registrada'; }
+    else { pob = pobPrev; pobFuente = 'sin cambios registrados'; }
+    const bio = (pob !== null && peso !== null) ? biomasaKg(pob, peso, cfg) : null;
+    const usaConsumido = num(m.alimentoConsumido) !== null;
+    const alim = usaConsumido ? num(m.alimentoConsumido) : num(m.alimentoSuministrado);
+    const ret = num(m.biomasaRetirada) || 0;
+    if (alim !== null) alimAcum += alim;
+    retAcum += ret;
+    const inc = (bio !== null && bioPrev !== null) ? bio + ret - bioPrev : null;
+    const incAcum = (bio !== null && bio0 !== null) ? bio + retAcum - bio0 : null;
+    const dPer = diasEntre(fechaPrev, m.fecha);
+    out.push(Object.assign({}, m, {
+      peso, pob, pobFuente, biomasa: bio, alimentoPeriodo: alim, usaConsumido, retirada: ret,
+      incremento: inc, fcaPeriodo: fca(alim, inc), alimentoAcum: alimAcum, incrementoAcum: incAcum,
+      fcaAcum: cfg.fcaTotalMetodo === 'cosecha' ? fca(alimAcum, bio !== null ? bio + retAcum : null) : fca(alimAcum, incAcum),
+      dias: diasEntre(e.fechaSiembra, m.fecha), diasPeriodo: dPer,
+      gananciaDia: (peso !== null && pesoPrev !== null && dPer > 0) ? (peso - pesoPrev) / dPer : null
+    }));
+    if (pob !== null) pobPrev = pob;
+    if (bio !== null) bioPrev = bio;
+    if (peso !== null) pesoPrev = peso;
+    fechaPrev = m.fecha;
+  }
+  return { registros: out, bio0 };
+}
+
+/* ---------- análisis completo de un estanque ---------- */
+function analizarEstanque(state, e, hoy) {
+  const cfg = state.config;
+  const esp = state.especies.find((x) => x.id === e.especieId) || null;
+  const area = areaM2(e);
+  const vol = volumenM3(area, e.profundidad);
+  const nIni = num(e.poblacionInicial);
+  const pobIni = nIni !== null ? nIni : ((num(e.densidad) !== null && area > 0) ? rEnt(num(e.densidad) * area) : null);
+  const dens = densidad(pobIni, area);
+  const mt = num(e.mortTransporte);
+  const comprados = (pobIni !== null && mt !== null && mt >= 0 && mt < 100) ? techo(pobIni / (1 - mt / 100)) : null;
+  const pesoIni = num(e.pesoInicial) !== null ? num(e.pesoInicial) : (esp ? num(esp.pesoInicial) : null);
+  const pesoObj = num(e.pesoObjetivo) !== null ? num(e.pesoObjetivo) : (esp ? num(esp.pesoCosecha) : null);
+  const precioVenta = num(e.precioVenta) !== null ? num(e.precioVenta) : (esp ? num(esp.precioKg) : null);
+  const precioCompra = num(e.precioCompra) !== null ? num(e.precioCompra) : (esp ? num(esp.precioCompra) : null);
+  const plan = planDe(e, esp);
+  const hist = construirHistorial(state, e, pobIni, pesoIni);
+  const regs = hist.registros;
+  const ult = regs.length ? regs[regs.length - 1] : null;
+  const dias = e.fechaSiembra && parseFecha(e.fechaSiembra) ? diasEntre(e.fechaSiembra, hoy) : null;
+
+  let actual;
+  if (ult && ult.peso !== null && ult.pob !== null) {
+    actual = { fuente: 'real', fecha: ult.fecha, dias: ult.dias, peso: ult.peso, pob: ult.pob, biomasa: ult.biomasa };
+  } else if (pobIni !== null && pesoIni !== null && plan.pesos.length && dias !== null && dias > 0) {
+    const w = interpPlan(puntosPlan(plan, pesoIni), dias);
+    let p = pobIni * factorSupervivencia(plan.mortalidades, plan.planDias, 0, dias);
+    if (cfg.modoClase) p = rEnt(p);
+    actual = w === null ? { fuente: 'inicial', fecha: e.fechaSiembra, dias: 0, peso: pesoIni, pob: pobIni, biomasa: biomasaKg(pobIni, pesoIni, cfg) }
+      : { fuente: 'estimado', fecha: hoy, dias, peso: w, pob: p, biomasa: biomasaKg(p, w, cfg) };
+  } else {
+    actual = { fuente: 'inicial', fecha: e.fechaSiembra, dias: 0, peso: pesoIni, pob: pobIni, biomasa: (pobIni !== null && pesoIni !== null) ? biomasaKg(pobIni, pesoIni, cfg) : null };
+  }
+  const tasaActual = tasaPlanEn(plan, actual.dias || 0);
+  const alimAcumReal = ult ? ult.alimentoAcum : 0;
+  const mortAcum = (pobIni !== null && actual.pob !== null) ? pobIni - actual.pob : null;
+  const superv = (pobIni > 0 && actual.pob !== null) ? actual.pob / pobIni * 100 : null;
+  const supervEsp = esp ? (num(esp.supervivencia) !== null ? num(esp.supervivencia) : supervivenciaDesde(esp.mortalidadPeriodo)) : null;
+  const k = area > 0 ? area / 10000 : null;
+  return {
+    e, esp, area, vol, pobIni, dens, densVol: vol ? pobIni / vol : null, comprados, pesoIni, pesoObj, precioVenta, precioCompra,
+    plan, hist, regs, ult, dias, actual, tasaActual,
+    alimDiario: alimentoDiario(actual.biomasa, tasaActual),
+    alimAcumReal, mortAcum, superv, supervEsp,
+    vivosEst: vivosEstimados(pobIni, supervEsp),
+    biomasaHa: (actual.biomasa !== null && area > 0) ? actual.biomasa * 10000 / area : null,
+    biomasaM3: (actual.biomasa !== null && vol) ? actual.biomasa / vol : null,
+    incrementoPeso: (actual.peso !== null && pesoIni !== null) ? actual.peso - pesoIni : null,
+    fcaAcum: ult ? ult.fcaAcum.valor : null,
+    insumos: {
+      calKg: k !== null && num(e.calKgHa) !== null ? num(e.calKgHa) * k : null,
+      fertIniKg: k !== null && num(e.fertIniKgHa) !== null ? num(e.fertIniKgHa) * k : null,
+      fertMensKg: k !== null && num(e.fertMensKgHa) !== null ? num(e.fertMensKgHa) * k : null
+    }
+  };
+}
+
+/* Proyección "por defecto" de un estanque hasta el final del plan (para economía y resumen) */
+function proyeccionPlan(state, an, hoy) {
+  const { e, plan, pesoIni, pobIni } = an;
+  if (!plan.pesos.length || pobIni === null || pesoIni === null) return null;
+  const real = an.actual.fuente === 'real';
+  const inicio = real ? (an.actual.dias || 0) : 0;
+  const finPlan = plan.pesos.length * plan.planDias;
+  if (inicio >= finPlan) return null;
+  return proyectar({
+    cfg: state.config, inicioDias: inicio, fechaSiembra: e.fechaSiembra, pobInicial: real ? an.actual.pob : pobIni,
+    pesoInicial: real ? an.actual.peso : pesoIni, pasoDias: plan.planDias, horizonteDias: finPlan - inicio, planDias: plan.planDias,
+    modelo: { tipo: 'pesos', pesos: plan.pesos, pesoSiembra: pesoIni }, ajustarAReal: real,
+    mortalidades: plan.mortalidades, supervivenciaConstante: false, tasas: plan.tasas, pesoObjetivo: an.pesoObj
+  });
+}
+
+/* ---------- economía ---------- */
+function economiaEstanque(state, an, hoy, proy) {
+  const cfg = state.config, e = an.e;
+  const costos = state.costos.filter((c) => c.estanqueId === e.id && num(c.monto) !== null);
+  const aLinea = (c) => ({ categoria: c.categoria, monto: num(c.monto), auto: false, concepto: c.concepto });
+  const reales = costos.filter((c) => c.tipo !== 'proyectado').map(aLinea);
+  const proyec = costos.filter((c) => c.tipo === 'proyectado').map(aLinea);
+  const auto = [];
+  if (e.autoSemilla !== false && an.comprados !== null && an.precioCompra !== null) {
+    const yaSembrado = e.fechaSiembra && e.fechaSiembra <= hoy;
+    const linea = { categoria: CATEGORIAS_COSTO[0], monto: an.comprados * an.precioCompra, auto: true, concepto: `${fmt(an.comprados, 0)} organismos × ${fmt(an.precioCompra, 4)}` };
+    (yaSembrado ? reales : proyec).push(linea); auto.push(linea);
+  }
+  const pAli = num(e.precioAlimento);
+  if (e.autoAlimento !== false && pAli !== null) {
+    const l1 = { categoria: CATEGORIAS_COSTO[1], monto: an.alimAcumReal * pAli, auto: true, concepto: `${fmt(an.alimAcumReal)} kg registrados × ${fmt(pAli, 2)}` };
+    reales.push(l1); auto.push(l1);
+    const resto = proy && proy.resumen && proy.resumen.alimentoTotal !== null ? proy.resumen.alimentoTotal : null;
+    if (resto !== null && an.e.estado !== 'finalizado') {
+      const l2 = { categoria: CATEGORIAS_COSTO[1], monto: resto * pAli, auto: true, concepto: `${fmt(resto)} kg proyectados × ${fmt(pAli, 2)}` };
+      proyec.push(l2); auto.push(l2);
+    }
+  }
+  const costoReal = suma(reales.map((c) => c.monto));
+  const costoProy = suma(proyec.map((c) => c.monto));
+  const costoTotal = costoReal + costoProy;
+  const ing = state.ingresos.filter((i) => i.estanqueId === e.id && num(i.monto) !== null);
+  const ingReal = suma(ing.filter((i) => i.tipo !== 'estimado').map((i) => num(i.monto)));
+  const ingEstManual = suma(ing.filter((i) => i.tipo === 'estimado').map((i) => num(i.monto)));
+  const kgProd = proy && proy.resumen ? proy.resumen.biomasaFinal : an.actual.biomasa;
+  const kgVendidos = suma(ing.filter((i) => i.tipo !== 'estimado').map((i) => num(i.kg)));
+  const ingVentaEst = (kgProd !== null && an.precioVenta !== null) ? kgProd * an.precioVenta : null;
+  const ingEst = (ingVentaEst !== null ? ingVentaEst : 0) + ingEstManual;
+  const ganReal = ingReal - costoReal;
+  const ganEst = ingEst - costoTotal;
+  const pobViva = proy && proy.resumen ? proy.resumen.pobFinal : an.actual.pob;
+  return {
+    reales, proyectados: proyec, auto,
+    costoReal, costoProy, costoTotal,
+    costoPorSembrado: div(costoTotal, an.pobIni), costoPorSobreviviente: div(costoTotal, pobViva),
+    costoPorKg: div(costoTotal, kgProd), kgProd, kgVendidos,
+    ingReal, ingEst, ingVentaEst, ingEstManual,
+    ganReal, ganEst,
+    margenReal: div(ganReal, ingReal), margenEst: div(ganEst, ingEst),
+    puntoEquilibrioKg: div(costoTotal, an.precioVenta), precioMinimo: div(costoTotal, kgProd),
+    proyectado: !!(proy && proy.resumen)
+  };
+}
+
+/* ---------- granja: agregación ---------- */
+function resumenGranja(state, hoy, filtro) {
+  const f = filtro || {};
+  const filas = [];
+  for (const e of state.estanques) {
+    if (f.especie && e.especieId !== f.especie) continue;
+    if (f.estado && e.estado !== f.estado) continue;
+    if (f.desde && (!e.fechaSiembra || e.fechaSiembra < f.desde)) continue;
+    if (f.hasta && (!e.fechaSiembra || e.fechaSiembra > f.hasta)) continue;
+    const an = analizarEstanque(state, e, hoy);
+    const proy = proyeccionPlan(state, an, hoy);
+    const eco = economiaEstanque(state, an, hoy, proy);
+    filas.push({ an, proy, eco });
+  }
+  const activos = filas.filter((x) => x.an.e.estado === 'en crianza' || x.an.e.estado === 'en cosecha');
+  const alimSum = suma(filas.map((x) => x.an.alimAcumReal));
+  // FCA de granja: Σ alimento acumulado ÷ Σ incremento de biomasa (solo estanques con medición y F.C.A. calculable)
+  const validos = filas.filter((x) => x.an.ult && x.an.ult.incrementoAcum > 0);
+  const fcaGranja = validos.length ? div(suma(validos.map((x) => x.an.ult.alimentoAcum)), suma(validos.map((x) => x.an.ult.incrementoAcum))) : null;
+  return {
+    filas,
+    kpi: {
+      total: state.estanques.length, activos: activos.length,
+      pobIni: suma(filas.map((x) => x.an.pobIni)), pobViva: suma(filas.map((x) => x.an.actual.pob)),
+      biomasa: suma(filas.map((x) => x.an.actual.biomasa)),
+      alimDiario: suma(filas.map((x) => x.an.alimDiario)), alimAcum: alimSum, fcaGranja,
+      costo: suma(filas.map((x) => x.eco.costoReal)), costoTotal: suma(filas.map((x) => x.eco.costoTotal)),
+      ingEst: suma(filas.map((x) => x.eco.ingEst)), ganProy: suma(filas.map((x) => x.eco.ganEst))
+    }
+  };
+}
+
+/* ---------- alertas ---------- */
+function alerta(nivel, e, dato, porque, valor, corregir) {
+  return { nivel, estanqueId: e ? e.id : null, codigo: e ? (e.codigo || '(sin código)') : 'General', dato, porque, valor, corregir };
+}
+function evaluarAlertas(state, hoy) {
+  const A = [], cfg = state.config;
+  const nueva = (...a) => A.push(alerta(...a));
+  for (const esp of state.especies) {
+    const sv = num(esp.supervivencia);
+    if (sv !== null && (sv < 0 || sv > 100)) nueva('error', null, `Supervivencia de ${esp.nombre}`, 'La supervivencia debe estar entre 0 % y 100 %.', `${sv} %`, 'Corrige el valor en Configuración › Especies.');
+    for (const t of esp.tasasPeriodo || []) if (t < 0) nueva('error', null, `Tasa de alimentación de ${esp.nombre}`, 'Una tasa negativa no es válida.', `${t} %`, 'Corrige la tasa en Configuración › Especies.');
+    if (num(esp.precioKg) !== null && num(esp.precioKg) < 0) nueva('error', null, `Precio de venta de ${esp.nombre}`, 'Los precios no pueden ser negativos.', String(esp.precioKg), 'Corrige el precio.');
+  }
+  for (const e of state.estanques) {
+    const an = analizarEstanque(state, e, hoy);
+    const esp = an.esp;
+    // --- datos obligatorios ---
+    if (!esp) nueva('advertencia', e, 'Especie', 'Sin especie no se pueden aplicar parámetros ni proyecciones.', 'sin especie', 'Selecciona la especie en Estanques › Editar.');
+    if (num(e.area) === null) nueva('advertencia', e, 'Área', 'Sin área no se calculan densidad, biomasa por hectárea ni insumos.', 'vacía', 'Escribe el área del estanque.');
+    else if (num(e.area) <= 0) nueva('error', e, 'Área del estanque', 'El área debe ser mayor que cero.', `${e.area} ${e.areaUnidad === 'ha' ? 'ha' : 'm²'}`, 'Escribe un área positiva.');
+    if (e.profundidad !== null && e.profundidad !== undefined && e.profundidad !== '' && num(e.profundidad) !== null && num(e.profundidad) < 0) nueva('error', e, 'Profundidad', 'La profundidad no puede ser negativa.', `${e.profundidad} m`, 'Corrige la profundidad.');
+    if (!e.fechaSiembra) nueva('advertencia', e, 'Fecha de siembra', 'Sin fecha de siembra no se calculan días de cultivo ni proyecciones con fechas.', 'vacía', 'Indica la fecha de siembra.');
+    else if (!parseFecha(e.fechaSiembra)) nueva('error', e, 'Fecha de siembra', 'La fecha no es válida.', e.fechaSiembra, 'Escribe una fecha válida.');
+    if (e.fechaCosecha && e.fechaSiembra && e.fechaCosecha < e.fechaSiembra) nueva('error', e, 'Fecha de cosecha', 'La cosecha no puede ser anterior a la siembra.', `${fmtFecha(e.fechaCosecha)} < ${fmtFecha(e.fechaSiembra)}`, 'Corrige una de las dos fechas.');
+    const nIniRaw = num(e.poblacionInicial);
+    if (nIniRaw !== null && (nIniRaw < 0 || nIniRaw !== Math.floor(nIniRaw))) nueva('error', e, 'Número de organismos sembrados', 'Debe ser un número entero positivo.', String(e.poblacionInicial), 'Corrige la población inicial.');
+    else if (an.pobIni === null) nueva('advertencia', e, 'Población inicial', 'Sin población no se calculan biomasa, alimento ni F.C.A.', 'vacía', 'Escribe el número sembrado o la densidad.');
+    if (an.pesoIni === null) nueva('advertencia', e, 'Peso inicial', 'Sin peso inicial no se calcula la biomasa de siembra.', 'vacío', 'Indica el peso inicial o complétalo en la especie.');
+    else if (an.pesoIni <= 0) nueva('error', e, 'Peso inicial', 'El peso promedio debe ser mayor que cero.', `${an.pesoIni} g`, 'Corrige el peso inicial.');
+    for (const [k, etq] of [['precioCompra', 'Precio de compra por organismo'], ['precioAlimento', 'Precio del alimento'], ['precioVenta', 'Precio de venta']]) {
+      if (num(e[k]) !== null && num(e[k]) < 0) nueva('error', e, etq, 'Los precios no pueden ser negativos.', String(e[k]), 'Corrige el precio.');
+    }
+    const mt = num(e.mortTransporte);
+    if (mt !== null && (mt < 0 || mt >= 100)) nueva('error', e, 'Mortalidad en el transporte', 'Debe estar entre 0 % y menos de 100 %.', `${mt} %`, 'Corrige el porcentaje.');
+    // --- parámetros de la especie ---
+    if (esp) {
+      const faltan = [];
+      if (num(esp.pesoCosecha) === null && num(e.pesoObjetivo) === null) faltan.push('peso objetivo de cosecha');
+      if (!(esp.tasasPeriodo || []).length && !((e.plan || {}).tasas || []).length) faltan.push('tasas de alimentación');
+      if (num(esp.fcaEsperado) === null) faltan.push('F.C.A. esperado');
+      if (!(esp.pesosEsperados || []).length && !((e.plan || {}).pesos || []).length) faltan.push('pesos esperados por período');
+      if (faltan.length) nueva('advertencia', e, `Parámetros de ${esp.nombre}`, 'Faltan parámetros: no se aplican valores por defecto de otras especies.', faltan.join(', '), 'Complétalos en Configuración › Especies.');
+      const dmin = num(esp.densidadMin), dmax = num(esp.densidadMax);
+      if (an.dens !== null) {
+        if (dmin === null && dmax === null) nueva('recomendacion', e, 'Límites de densidad', `No hay límites de densidad configurados para ${esp.nombre}, por eso no se puede validar la densidad.`, `${fmt(an.dens)} org/m²`, 'Configura la densidad mínima y máxima de la especie.');
+        else if ((dmin !== null && an.dens < dmin) || (dmax !== null && an.dens > dmax)) nueva('advertencia', e, 'Densidad de siembra', `Está fuera de los límites configurados para ${esp.nombre} (${dmin ?? '—'} – ${dmax ?? '—'} org/m²).`, `${fmt(an.dens)} org/m²`, 'Verifica el área y la población, o ajusta los límites si tu sistema lo permite.');
+      }
+    }
+    // --- mediciones ---
+    let prev = null;
+    const tMin = esp ? num(esp.tasaMin) : null, tMax = esp ? num(esp.tasaMax) : null;
+    for (const r of an.regs) {
+      const ref = `${fmtFecha(r.fecha)}`;
+      if (!parseFecha(r.fecha)) nueva('error', e, 'Fecha de la medición', 'La fecha no es válida.', String(r.fecha), 'Corrige o anula la medición.');
+      else if (e.fechaSiembra && r.fecha < e.fechaSiembra) nueva('advertencia', e, `Medición del ${ref}`, 'La medición es anterior a la fecha de siembra.', `${ref} < ${fmtFecha(e.fechaSiembra)}`, 'Revisa la fecha de la medición o de la siembra.');
+      if (r.peso === null || r.peso <= 0) nueva('error', e, `Peso promedio (${ref})`, 'El peso promedio debe ser mayor que cero.', String(r.peso ?? 'vacío'), 'Corrige o anula la medición.');
+      if (r.pob !== null && r.pob < 0) nueva('error', e, `Población viva (${ref})`, 'La población no puede ser negativa.', fmt(r.pob, 0), 'Corrige la medición.');
+      if (r.pob !== null && an.pobIni !== null && r.pob > an.pobIni) nueva('error', e, `Población viva (${ref})`, 'Supera la población sembrada: la supervivencia sería mayor que 100 %.', `${fmt(r.pob, 0)} > ${fmt(an.pobIni, 0)}`, 'Corrige la población viva o la población inicial.');
+      if (num(r.biomasaMedida) !== null && r.biomasa !== null && r.biomasa > 0) {
+        const dif = Math.abs(num(r.biomasaMedida) - r.biomasa) / r.biomasa * 100;
+        if (dif > cfg.tolBiomasaPct) nueva('advertencia', e, `Biomasa (${ref})`, `La biomasa medida difiere de población × peso en más de ${cfg.tolBiomasaPct} %.`, `medida ${fmt(num(r.biomasaMedida))} kg · calculada ${fmt(r.biomasa)} kg`, 'Verifica el peso promedio, la población viva o la pesada.');
+      }
+      if (prev && prev.peso !== null && r.peso !== null && r.peso < prev.peso) nueva('advertencia', e, `Peso promedio (${ref})`, 'El peso bajó respecto de la medición anterior (incremento negativo).', `${fmt(prev.peso)} g → ${fmt(r.peso)} g`, 'Verifica el muestreo (tamaño de muestra, balanza) o la fecha.');
+      if (prev && prev.gananciaDia > 0 && r.gananciaDia !== null && r.gananciaDia > 0) {
+        const dev = Math.abs(r.gananciaDia - prev.gananciaDia) / prev.gananciaDia * 100;
+        if (dev > cfg.tolDesvioPct) nueva('advertencia', e, `Crecimiento (${ref})`, `El incremento diario cambió más de ${cfg.tolDesvioPct} % respecto del período anterior.`, `${fmt(prev.gananciaDia)} → ${fmt(r.gananciaDia)} g/día`, 'Revisa los pesos y las fechas registradas.');
+      }
+      if (num(r.alimentoSuministrado) !== null && num(r.alimentoSuministrado) < 0) nueva('error', e, `Alimento suministrado (${ref})`, 'El alimento no puede ser negativo.', String(r.alimentoSuministrado), 'Corrige la medición.');
+      if (r.alimentoPeriodo !== null && r.alimentoPeriodo > 0 && r.incremento !== null && r.incremento <= 0) nueva('advertencia', e, `F.C.A. (${ref})`, 'Hubo alimento pero el incremento de biomasa fue cero o negativo: el F.C.A. no se puede calcular.', `${fmt(r.alimentoPeriodo)} kg · incremento ${fmt(r.incremento)} kg`, 'Revisa el peso, la población y el alimento del período.');
+      if ((tMin !== null || tMax !== null) && prev && r.alimentoPeriodo > 0 && prev.biomasa > 0 && r.diasPeriodo > 0) {
+        const tasaImp = r.alimentoPeriodo / (prev.biomasa * r.diasPeriodo) * 100;
+        if ((tMin !== null && tasaImp < tMin) || (tMax !== null && tasaImp > tMax)) nueva('advertencia', e, `Tasa de alimentación implícita (${ref})`, `Fuera del rango configurado para ${esp.nombre} (${tMin ?? '—'} – ${tMax ?? '—'} %).`, `${fmt(tasaImp)} %`, 'Verifica el alimento registrado o el rango de la especie.');
+      }
+      prev = r;
+    }
+    if (an.ult && esp && num(esp.fcaEsperado) !== null && an.ult.fcaAcum.valor !== null && an.ult.fcaAcum.valor > num(esp.fcaEsperado)) {
+      nueva('recomendacion', e, 'F.C.A. acumulado', `Supera el F.C.A. esperado de ${esp.nombre}.`, `${fmt(an.ult.fcaAcum.valor)} > ${fmt(num(esp.fcaEsperado))}`, 'Revisa raciones, desperdicio y estimación de biomasa.');
+    }
+    // --- proyección vs real ---
+    if (an.ult && an.ult.peso !== null && an.pesoIni !== null && an.plan.pesos.length && an.ult.dias !== null) {
+      const pp = interpPlanTol(puntosPlan(an.plan, an.pesoIni), an.ult.dias);
+      if (pp !== null && pp > 0) {
+        const dev = Math.abs(an.ult.peso - pp) / pp * 100;
+        if (dev > cfg.tolProyPct) nueva('advertencia', e, 'Proyección de crecimiento', `El peso real difiere más de ${cfg.tolProyPct} % del plan para ese día.`, `real ${fmt(an.ult.peso)} g · plan ${fmt(pp)} g (día ${an.ult.dias})`, 'Actualiza el plan en Proyecciones o revisa la medición.');
+      }
+    }
+    if (e.estado === 'en crianza' && e.fechaSiembra && parseFecha(e.fechaSiembra) && e.fechaSiembra <= hoy) {
+      const ref = an.ult ? an.ult.fecha : e.fechaSiembra;
+      const d = diasEntre(ref, hoy);
+      if (d !== null && d > cfg.diasSinMuestreo) nueva('recomendacion', e, 'Muestreo', `Han pasado más de ${cfg.diasSinMuestreo} días sin registrar una medición.`, `${d} días desde ${fmtFecha(ref)}`, 'Registra un muestreo en Producción.');
+    }
+  }
+  for (const c of state.costos) {
+    const e = state.estanques.find((x) => x.id === c.estanqueId) || null;
+    if (num(c.monto) === null) nueva('advertencia', e, `Costo «${c.concepto || c.categoria}»`, 'El monto no es un número válido.', String(c.monto), 'Corrige o elimina el movimiento.');
+    else if (num(c.monto) < 0) nueva('error', e, `Costo «${c.concepto || c.categoria}»`, 'Los costos no pueden ser negativos.', `${c.monto}`, 'Corrige el monto.');
+  }
+  for (const i of state.ingresos) {
+    const e = state.estanques.find((x) => x.id === i.estanqueId) || null;
+    if (num(i.monto) !== null && num(i.monto) < 0) nueva('error', e, `Ingreso «${i.concepto || ''}»`, 'Los ingresos no pueden ser negativos.', `${i.monto}`, 'Corrige el monto.');
+  }
+  const orden = { error: 0, advertencia: 1, recomendacion: 2 };
+  return A.sort((a, b) => orden[a.nivel] - orden[b.nivel]);
+}
+
+/* ---------- validación de formularios ---------- */
+function validarEstanque(e, estanques) {
+  const err = [];
+  if (!String(e.codigo || '').trim()) err.push('El código del estanque es obligatorio.');
+  else if (estanques.some((x) => x.id !== e.id && String(x.codigo).trim().toLowerCase() === String(e.codigo).trim().toLowerCase())) err.push(`Ya existe un estanque con el código «${e.codigo}».`);
+  if (num(e.area) === null) err.push('El área es obligatoria.');
+  else if (num(e.area) <= 0) err.push('El área debe ser mayor que cero.');
+  if (!e.especieId) err.push('Selecciona la especie.');
+  if (e.profundidad !== '' && e.profundidad !== null && e.profundidad !== undefined && (num(e.profundidad) === null || num(e.profundidad) <= 0)) err.push('La profundidad, si se indica, debe ser mayor que cero.');
+  if (e.fechaSiembra && !parseFecha(e.fechaSiembra)) err.push('La fecha de siembra no es válida.');
+  if (e.fechaCosecha && !parseFecha(e.fechaCosecha)) err.push('La fecha de cosecha no es válida.');
+  if (e.fechaSiembra && e.fechaCosecha && parseFecha(e.fechaSiembra) && parseFecha(e.fechaCosecha) && e.fechaCosecha < e.fechaSiembra) err.push('La fecha de cosecha no puede ser anterior a la siembra.');
+  const p = num(e.poblacionInicial);
+  if (e.poblacionInicial !== '' && e.poblacionInicial !== null && e.poblacionInicial !== undefined && (p === null || p < 0 || p !== Math.floor(p))) err.push('El número de organismos sembrados debe ser un entero mayor o igual que cero.');
+  for (const [k, n] of [['densidad', 'La densidad'], ['pesoInicial', 'El peso inicial'], ['calKgHa', 'La dosis de cal'], ['fertIniKgHa', 'La dosis inicial de fertilizante'], ['fertMensKgHa', 'La dosis mensual de fertilizante'], ['precioCompra', 'El precio de compra'], ['precioAlimento', 'El precio del alimento'], ['precioVenta', 'El precio de venta'], ['pesoObjetivo', 'El peso objetivo']]) {
+    const raw = e[k];
+    if (raw !== '' && raw !== null && raw !== undefined && (num(raw) === null || num(raw) < 0)) err.push(`${n} debe ser un número mayor o igual que cero.`);
+  }
+  const mt = num(e.mortTransporte);
+  if (e.mortTransporte !== '' && e.mortTransporte !== null && e.mortTransporte !== undefined && (mt === null || mt < 0 || mt >= 100)) err.push('La mortalidad de transporte debe estar entre 0 y menos de 100 %.');
+  return err;
+}
+function validarMedicion(m, e) {
+  const err = [];
+  if (!parseFecha(m.fecha)) err.push('La fecha de la medición no es válida.');
+  else if (e.fechaSiembra && m.fecha < e.fechaSiembra) err.push('La medición no puede ser anterior a la siembra.');
+  const peso = num(m.peso);
+  if (peso === null || peso <= 0) err.push('El peso promedio es obligatorio y debe ser mayor que cero.');
+  for (const [k, n] of [['poblacion', 'La población viva'], ['muertos', 'Los muertos'], ['alimentoSuministrado', 'El alimento suministrado'], ['alimentoConsumido', 'El alimento consumido'], ['biomasaRetirada', 'La biomasa retirada'], ['biomasaMedida', 'La biomasa medida']]) {
+    const raw = m[k];
+    if (raw !== '' && raw !== null && raw !== undefined && (num(raw) === null || num(raw) < 0)) err.push(`${n} debe ser un número mayor o igual que cero.`);
+  }
+  return err;
+}
+function validarMovimiento(m) {
+  const err = [];
+  if (!parseFecha(m.fecha)) err.push('La fecha no es válida.');
+  const v = num(m.monto);
+  if (v === null) err.push('El monto es obligatorio.');
+  else if (v < 0) err.push('El monto no puede ser negativo.');
+  return err;
+}
+function validarEspecie(s) {
+  const err = [];
+  if (!String(s.nombre || '').trim()) err.push('El nombre de la especie es obligatorio.');
+  for (const [k, n] of [['pesoInicial', 'El peso inicial'], ['pesoCosecha', 'El peso de cosecha'], ['fcaEsperado', 'El F.C.A. esperado'], ['cicloDias', 'La duración del ciclo'], ['precioKg', 'El precio de venta'], ['precioCompra', 'El precio de compra'], ['densidadMin', 'La densidad mínima'], ['densidadMax', 'La densidad máxima'], ['tasaMin', 'La tasa mínima'], ['tasaMax', 'La tasa máxima']]) {
+    const raw = s[k];
+    if (raw !== '' && raw !== null && raw !== undefined && (num(raw) === null || num(raw) < 0)) err.push(`${n} debe ser un número mayor o igual que cero.`);
+  }
+  const sv = num(s.supervivencia);
+  if (s.supervivencia !== '' && s.supervivencia !== null && s.supervivencia !== undefined && (sv === null || sv < 0 || sv > 100)) err.push('La supervivencia debe estar entre 0 y 100 %.');
+  if (num(s.densidadMin) !== null && num(s.densidadMax) !== null && num(s.densidadMin) > num(s.densidadMax)) err.push('La densidad mínima no puede superar la máxima.');
+  if (num(s.tasaMin) !== null && num(s.tasaMax) !== null && num(s.tasaMin) > num(s.tasaMax)) err.push('La tasa mínima no puede superar la máxima.');
+  return err;
+}
+
+/* ---------- datos iniciales ---------- */
+function especieVacia(nombre) {
+  return {
+    id: uid('esp'), nombre, sistema: '', pesoInicial: null, pesoCosecha: null, supervivencia: null, fcaEsperado: null,
+    cicloDias: null, precioKg: null, precioCompra: null, planDias: 30, pesosEsperados: [], mortalidadPeriodo: [], tasasPeriodo: [],
+    densidadMin: null, densidadMax: null, tasaMin: null, tasaMax: null, fuente: '', notas: ''
+  };
+}
+function especiesBase() {
+  const g = especieVacia('Gamitana');
+  Object.assign(g, {
+    id: 'esp-gamitana', sistema: 'Estanque de tierra', pesoInicial: 2.8, pesoCosecha: 450, cicloDias: 180, planDias: 30,
+    pesosEsperados: [16, 58, 152, 234, 342, 450], mortalidadPeriodo: [5, 4, 3], tasasPeriodo: [10, 8, 5, 3, 3, 3],
+    fuente: 'Ejemplo de clase (Producción Acuícola II: hoja de San Rafael SRL / examen parcial). Son valores de ejemplo: verifícalos y ajústalos a tu operación.',
+    notas: 'Sin precios, F.C.A. esperado ni límites de densidad: complétalos.'
+  });
+  const t = especieVacia('Tilapia'); t.id = 'esp-tilapia';
+  t.notas = 'Sin parámetros cargados. Completa los valores propios de tu sistema; la aplicación no asume los de otras especies.';
+  const c = especieVacia('Langostino blanco (Penaeus vanname)'); c.id = 'esp-camaron';
+  c.notas = 'Sin parámetros cargados. Completa los valores propios de tu sistema; la aplicación no asume los de otras especies.';
+  return [g, t, c];
+}
+function estadoInicial() {
+  return { version: 1, config: Object.assign({}, CONFIG_DEF), especies: especiesBase(), estanques: [], muestreos: [], costos: [], ingresos: [], creado: new Date().toISOString() };
+}
+function estanqueNuevo(especieId) {
+  return {
+    id: uid('est'), codigo: '', nombre: '', area: '', areaUnidad: 'm2', profundidad: '', especieId: especieId || '', fechaSiembra: '', fechaCosecha: '',
+    estado: 'preparado', obs: '', poblacionInicial: '', densidad: '', pesoInicial: '', pesoObjetivo: '', mortTransporte: '', calKgHa: '', fertIniKgHa: '',
+    fertMensKgHa: '', precioCompra: '', precioAlimento: '', precioVenta: '', autoSemilla: true, autoAlimento: true, plan: null, ejemplo: false
+  };
+}
+function normalizarEstado(s) {
+  const base = estadoInicial();
+  const o = Object.assign({}, base, s || {});
+  o.config = Object.assign({}, base.config, (s && s.config) || {});
+  o.especies = Array.isArray(s && s.especies) && s.especies.length ? s.especies : base.especies;
+  for (const k of ['estanques', 'muestreos', 'costos', 'ingresos']) o[k] = Array.isArray(o[k]) ? o[k] : [];
+  return o;
+}
+function validarRespaldo(obj) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return 'El archivo no tiene el formato de un respaldo.';
+  if (obj.version !== 1) return 'La versión del respaldo no es compatible.';
+  for (const k of ['estanques', 'muestreos', 'costos', 'ingresos', 'especies']) if (!Array.isArray(obj[k])) return `Falta la lista «${k}» en el respaldo.`;
+  return null;
+}
+
+/* ---------- datos de ejemplo (claramente marcados) ---------- */
+function agregarEjemplo(state) {
+  const gam = state.especies.find((x) => x.id === 'esp-gamitana') || state.especies[0];
+  const til = state.especies.find((x) => x.id === 'esp-tilapia') || state.especies[0];
+  const e1 = Object.assign(estanqueNuevo(gam.id), {
+    codigo: 'EJ-01', nombre: 'EJEMPLO · hoja San Rafael (clase)', area: 9600, profundidad: 1.5, fechaSiembra: '2025-01-02', fechaCosecha: '2025-07-02',
+    estado: 'finalizado', obs: 'DATOS DE EJEMPLO tomados de la hoja resuelta de clase. No son datos reales de producción.', densidad: 3, poblacionInicial: 28800,
+    pesoInicial: 2.8, mortTransporte: 8, calKgHa: 980, fertIniKgHa: 1350, precioCompra: 0.15, precioAlimento: 2.5, precioVenta: 12, ejemplo: true
+  });
+  const alim = [241.92, 1050.62, 2285.15, 3485.39, 5365.67, 7842.13];
+  const pesos = [16, 58, 152, 234, 342, 450], pobs = [27360, 26266, 25478, 25478, 25478, 25478];
+  const mu = pesos.map((p, i) => ({ id: uid('mu'), estanqueId: e1.id, fecha: ['2025-02-02', '2025-03-02', '2025-04-02', '2025-05-02', '2025-06-02', '2025-07-02'][i],
+    peso: p, poblacion: pobs[i], muertos: '', alimentoSuministrado: alim[i], alimentoConsumido: '', biomasaRetirada: '', biomasaMedida: '', obs: 'EJEMPLO', activo: true, creado: i, ejemplo: true }));
+  const e2 = Object.assign(estanqueNuevo(til.id), {
+    codigo: 'EJ-02', nombre: 'EJEMPLO · examen parcial (tilapia)', area: 9600, profundidad: 1.5, fechaSiembra: '2026-01-02', fechaCosecha: '2026-07-02',
+    estado: 'finalizado', obs: 'DATOS DE EJEMPLO tomados del examen de clase. No son datos reales de producción.', densidad: 6, poblacionInicial: 57600,
+    pesoInicial: 2.8, mortTransporte: 8, calKgHa: 980, fertIniKgHa: 1350, fertMensKgHa: 800, ejemplo: true,
+    plan: { planDias: 30, pesos: [16, 58, 152, 234, 342, 450], mortalidades: [5, 4, 3], tasas: [10, 8, 5, 3, 3, 3] }
+  });
+  const cost = [['Mano de obra', 'EJEMPLO ficticio', 3000], ['Electricidad', 'EJEMPLO ficticio', 800], ['Transporte', 'EJEMPLO ficticio', 500]]
+    .map(([categoria, concepto, monto], i) => ({ id: uid('co'), estanqueId: e1.id, fecha: '2025-03-01', categoria, concepto, monto, tipo: 'real', ejemplo: true, creado: i }));
+  const ing = [{ id: uid('in'), estanqueId: e1.id, fecha: '2025-07-05', concepto: 'EJEMPLO ficticio: venta de cosecha', monto: 120000, kg: 10000, tipo: 'real', ejemplo: true }];
+  state.estanques.push(e1, e2);
+  state.muestreos.push(...mu);
+  state.costos.push(...cost);
+  state.ingresos.push(...ing);
+  return state;
+}
+function quitarEjemplo(state) {
+  const ids = new Set(state.estanques.filter((e) => e.ejemplo).map((e) => e.id));
+  state.estanques = state.estanques.filter((e) => !e.ejemplo);
+  state.muestreos = state.muestreos.filter((m) => !ids.has(m.estanqueId) && !m.ejemplo);
+  state.costos = state.costos.filter((c) => !ids.has(c.estanqueId) && !c.ejemplo);
+  state.ingresos = state.ingresos.filter((i) => !ids.has(i.estanqueId) && !i.ejemplo);
+  return state;
+}
+
+/* ---------- almacenamiento (el respaldo real se inyecta: localStorage en el navegador) ---------- */
+function crearStore(backend, key) {
+  return {
+    cargar() {
+      try {
+        const raw = backend.getItem(key);
+        if (!raw) return { state: estadoInicial(), nuevo: true };
+        return { state: normalizarEstado(JSON.parse(raw)), nuevo: false };
+      } catch (err) { return { state: estadoInicial(), nuevo: true, error: String(err) }; }
+    },
+    guardar(state) {
+      try { backend.setItem(key, JSON.stringify(state)); return { ok: true }; }
+      catch (err) { return { ok: false, error: String(err) }; }
+    }
+  };
+}
+
+/* ---------- exportación ---------- */
+function csvCelda(v) {
+  if (v === null || v === undefined) return '';
+  const s = String(v);
+  return /[",\n\r;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+const aCSV = (filas) => '\ufeff' + filas.map((f) => f.map(csvCelda).join(',')).join('\r\n') + '\r\n';
+function tablasExport(state, hoy) {
+  const R = (x, d = 4) => (x === null || x === undefined || !Number.isFinite(x)) ? '' : Math.round(x * 10 ** d) / 10 ** d;
+  const G = resumenGranja(state, hoy);
+  const nombreEsp = (id) => (state.especies.find((x) => x.id === id) || {}).nombre || '';
+  const cod = (id) => (state.estanques.find((x) => x.id === id) || {}).codigo || '';
+  const resumen = [['Código', 'Nombre', 'Especie', 'Estado', 'Fecha de siembra', 'Área (m²)', 'Población inicial', 'Población viva', 'Origen del dato', 'Peso promedio (g)', 'Biomasa (kg)', 'Alimento diario (kg)', 'Alimento acumulado (kg)', 'F.C.A. acumulado', 'Costo real', 'Costo total (real + proyectado)', 'Ingresos reales', 'Ingresos estimados', 'Ganancia real', 'Ganancia estimada']];
+  for (const { an, eco } of G.filas) {
+    resumen.push([an.e.codigo, an.e.nombre, nombreEsp(an.e.especieId), an.e.estado, an.e.fechaSiembra, R(an.area, 2), R(an.pobIni, 0), R(an.actual.pob, 0), an.actual.fuente, R(an.actual.peso, 2), R(an.actual.biomasa, 2), R(an.alimDiario, 2), R(an.alimAcumReal, 2), R(an.fcaAcum, 3), R(eco.costoReal, 2), R(eco.costoTotal, 2), R(eco.ingReal, 2), R(eco.ingEst, 2), R(eco.ganReal, 2), R(eco.ganEst, 2)]);
+  }
+  const estanques = [['Código', 'Nombre', 'Especie', 'Estado', 'Área', 'Unidad', 'Profundidad (m)', 'Fecha de siembra', 'Fecha de cosecha', 'Población inicial', 'Densidad (org/m²)', 'Peso inicial (g)', 'Mortalidad transporte (%)', 'Cal (kg/ha)', 'Fertilizante inicial (kg/ha)', 'Fertilizante mensual (kg/ha)', 'Precio compra/organismo', 'Precio alimento/kg', 'Precio venta/kg', 'Es ejemplo', 'Observaciones']];
+  for (const e of state.estanques) estanques.push([e.codigo, e.nombre, nombreEsp(e.especieId), e.estado, e.area, e.areaUnidad === 'ha' ? 'ha' : 'm²', e.profundidad, e.fechaSiembra, e.fechaCosecha, e.poblacionInicial, e.densidad, e.pesoInicial, e.mortTransporte, e.calKgHa, e.fertIniKgHa, e.fertMensKgHa, e.precioCompra, e.precioAlimento, e.precioVenta, e.ejemplo ? 'sí' : 'no', e.obs]);
+  const historial = [['Estanque', 'Fecha', 'Días de cultivo', 'Peso (g)', 'Población', 'Origen de la población', 'Biomasa (kg)', 'Alimento del período (kg)', 'Alimento acumulado (kg)', 'F.C.A. del período', 'F.C.A. acumulado', 'Registro anulado', 'Es ejemplo', 'Observaciones']];
+  for (const e of state.estanques) {
+    const an = analizarEstanque(state, e, hoy);
+    for (const r of an.regs) historial.push([e.codigo, r.fecha, r.dias, r.peso, r.pob, r.pobFuente, R(r.biomasa, 2), R(r.alimentoPeriodo, 2), R(r.alimentoAcum, 2), R(r.fcaPeriodo.valor, 3), R(r.fcaAcum.valor, 3), 'no', r.ejemplo ? 'sí' : 'no', r.obs]);
+  }
+  for (const m of state.muestreos.filter((x) => x.activo === false)) historial.push([cod(m.estanqueId), m.fecha, '', m.peso, m.poblacion, '', '', m.alimentoSuministrado, '', '', '', 'sí', m.ejemplo ? 'sí' : 'no', m.obs]);
+  const costos = [['Estanque', 'Fecha', 'Categoría', 'Concepto', 'Monto', 'Moneda', 'Tipo', 'Es ejemplo']];
+  for (const c of state.costos) costos.push([cod(c.estanqueId), c.fecha, c.categoria, c.concepto, c.monto, state.config.moneda, c.tipo === 'proyectado' ? 'proyectado' : 'real', c.ejemplo ? 'sí' : 'no']);
+  const ingresos = [['Estanque', 'Fecha', 'Concepto', 'Monto', 'Kg', 'Moneda', 'Tipo', 'Es ejemplo']];
+  for (const i of state.ingresos) ingresos.push([cod(i.estanqueId), i.fecha, i.concepto, i.monto, i.kg, state.config.moneda, i.tipo === 'estimado' ? 'estimado' : 'real', i.ejemplo ? 'sí' : 'no']);
+  return [{ nombre: 'Resumen', filas: resumen }, { nombre: 'Estanques', filas: estanques }, { nombre: 'Historial', filas: historial }, { nombre: 'Costos', filas: costos }, { nombre: 'Ingresos', filas: ingresos }];
+}
+const xmlEsc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '');
+function aExcelXML(hojas) {
+  const hoja = (h) => `<Worksheet ss:Name="${xmlEsc(h.nombre).slice(0, 31)}"><Table>${h.filas.map((f, i) => `<Row>${f.map((v) => {
+    if (typeof v === 'number' && Number.isFinite(v)) return `<Cell><Data ss:Type="Number">${v}</Data></Cell>`;
+    const t = v === null || v === undefined ? '' : String(v);
+    return `<Cell${i === 0 ? ' ss:StyleID="enc"' : ''}><Data ss:Type="String">${xmlEsc(t)}</Data></Cell>`;
+  }).join('')}</Row>`).join('')}</Table></Worksheet>`;
+  return `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="enc"><Font ss:Bold="1"/><Interior ss:Color="#E6F2EA" ss:Pattern="Solid"/></Style></Styles>${hojas.map(hoja).join('')}</Workbook>`;
+}
+/*</PURE>*/
+
+/*<PURE2>*/
+/* ==========================================================================
+   VISTAS: funciones que devuelven HTML (sin tocar el DOM), para poder probarlas.
+   ========================================================================== */
+const getPath = (o, p) => p.split('.').reduce((a, k) => (a === null || a === undefined ? a : a[k]), o);
+const setPath = (o, p, v) => { const ks = p.split('.'); let a = o; ks.slice(0, -1).forEach((k) => { if (typeof a[k] !== 'object' || a[k] === null) a[k] = {}; a = a[k]; }); a[ks[ks.length - 1]] = v; };
+let _idN = 0;
+function inpt(o) {
+  const id = o.id || `f${++_idN}`;
+  const tipo = o.tipo || 'number';
+  const attrs = [`id="${esc(id)}"`, `type="${tipo}"`, o.name ? `name="${esc(o.name)}"` : '', o.ui ? `data-ui="${esc(o.ui)}"` : '', o.est ? `data-est="${esc(o.est)}"` : '',
+    o.cfg ? `data-cfg="${esc(o.cfg)}"` : '', o.esp ? `data-esp="${esc(o.esp)}"` : '', tipo === 'number' ? 'step="any" inputmode="decimal"' : '',
+    o.min !== undefined ? `min="${o.min}"` : '', o.max !== undefined ? `max="${o.max}"` : '', o.ro ? 'readonly' : '', o.req ? 'required aria-required="true"' : '', o.attrs || ''].filter(Boolean).join(' ');
+  const val = o.valor === null || o.valor === undefined ? '' : o.valor;
+  return `<div class="campo"><label for="${esc(id)}">${esc(o.etq)}${o.req ? ' *' : ''}</label><div class="entrada"><input ${attrs} value="${esc(val)}">${o.unidad ? `<span class="unidad">${esc(o.unidad)}</span>` : ''}</div>${o.ayuda ? `<span class="ayuda">${esc(o.ayuda)}</span>` : ''}</div>`;
+}
+function selc(o) {
+  const id = o.id || `f${++_idN}`;
+  const attrs = [`id="${esc(id)}"`, o.name ? `name="${esc(o.name)}"` : '', o.ui ? `data-ui="${esc(o.ui)}"` : '', o.est ? `data-est="${esc(o.est)}"` : '', o.cfg ? `data-cfg="${esc(o.cfg)}"` : '', o.rerender ? 'data-rerender="1"' : ''].filter(Boolean).join(' ');
+  return `<div class="campo"><label for="${esc(id)}">${esc(o.etq)}</label><select ${attrs}>${o.opciones.map(([v, t]) => `<option value="${esc(v)}"${String(v) === String(o.valor === null || o.valor === undefined ? '' : o.valor) ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>${o.ayuda ? `<span class="ayuda">${esc(o.ayuda)}</span>` : ''}</div>`;
+}
+const kpi = (tit, val, det, cls) => `<div class="kpi ${cls || ''}"><div class="tit">${esc(tit)}</div><div class="val">${val}</div>${det ? `<div class="det">${det}</div>` : ''}</div>`;
+const etq = (t) => ({ real: '<span class="etq real">REAL</span>', est: '<span class="etq est">ESTIMADO</span>', proy: '<span class="etq proy">PROYECTADO</span>', ej: '<span class="etq ej">EJEMPLO</span>', borrador: '<span class="etq proy">SIN GUARDAR</span>', inicial: '<span class="etq est">INICIAL</span>' }[t] || '');
+const aviso = (tipo, t) => `<div class="aviso ${tipo}" role="${tipo === 'error' ? 'alert' : 'status'}">${t}</div>`;
+const nombreEst = (e) => e.nombre ? `${esc(e.codigo)} · ${esc(e.nombre)}` : esc(e.codigo);
+const vacio = (t, extra) => `<div class="vacio">${t}${extra ? `<div class="acciones" style="justify-content:center">${extra}</div>` : ''}</div>`;
+function selEstanque(state, ui, conTodos) {
+  const ops = (conTodos ? [['__todos', 'Toda la granja']] : []).concat(state.estanques.map((e) => [e.id, `${e.codigo}${e.nombre ? ' · ' + e.nombre : ''}${e.ejemplo ? ' (ejemplo)' : ''}`]));
+  return selc({ id: 'sel-est', etq: 'Estanque', opciones: ops, valor: ui.sel, ui: 'sel', rerender: true });
+}
+const sinEstanques = () => vacio('Todavía no hay estanques registrados.', '<button class="btn" data-accion="nuevoEstanque">Registrar el primer estanque</button><button class="btn sec" data-accion="cargarEjemplo">Cargar datos de ejemplo</button>');
+
+/* ---------- gráficos SVG ---------- */
+function niceMax(v) {
+  if (!(v > 0)) return 1;
+  const p = Math.pow(10, Math.floor(Math.log10(v))), f = v / p;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+}
+function svgLineas(series, o) {
+  const pts = series.flatMap((s) => s.puntos).filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+  if (!pts.length) return '<div class="vacio">Sin datos para este gráfico todavía.</div>';
+  const W = 620, H = 290, L = 62, R = 16, T = 14, B = 48;
+  let x0 = Math.min(...pts.map((p) => p.x)), x1 = Math.max(...pts.map((p) => p.x));
+  if (x0 === x1) x1 = x0 + 1;
+  const ys = pts.map((p) => p.y);
+  let y0 = Math.min(0, ...ys), y1 = niceMax(Math.max(0, ...ys));
+  if (y0 < 0) y0 = -niceMax(-y0);
+  const X = (x) => L + (x - x0) / (x1 - x0) * (W - L - R), Y = (y) => T + (1 - (y - y0) / (y1 - y0)) * (H - T - B);
+  const xf = o.xFmt || ((x) => fmt(x, 0)), yf = o.yFmt || ((y) => fmt(y, y1 < 10 ? 2 : 0));
+  let g = '';
+  for (let i = 0; i <= 4; i++) {
+    const yv = y0 + (y1 - y0) * i / 4, xv = x0 + (x1 - x0) * i / 4;
+    g += `<line x1="${L}" x2="${W - R}" y1="${Y(yv)}" y2="${Y(yv)}" stroke="#e1e6e2"/><text x="${L - 6}" y="${Y(yv) + 4}" text-anchor="end" font-size="11" fill="#66736c">${esc(yf(yv))}</text>`;
+    g += `<text x="${X(xv)}" y="${H - B + 16}" text-anchor="middle" font-size="11" fill="#66736c">${esc(xf(xv))}</text>`;
+  }
+  if (y0 < 0) g += `<line x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}" stroke="#66736c"/>`;
+  const dash = { real: '', est: '2 4', proy: '7 5' };
+  let lineas = '';
+  for (const s of series) {
+    const p = s.puntos.filter((q) => Number.isFinite(q.x) && Number.isFinite(q.y)).sort((a, b) => a.x - b.x);
+    if (!p.length) continue;
+    const d = p.map((q, i) => `${i ? 'L' : 'M'}${X(q.x).toFixed(1)},${Y(q.y).toFixed(1)}`).join(' ');
+    lineas += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.4" ${dash[s.tipo || 'real'] ? `stroke-dasharray="${dash[s.tipo || 'real']}"` : ''}/>`;
+    if ((s.tipo || 'real') === 'real') lineas += p.map((q) => `<circle cx="${X(q.x).toFixed(1)}" cy="${Y(q.y).toFixed(1)}" r="3.4" fill="${s.color}"/>`).join('');
+  }
+  const leyenda = series.map((s) => `<span><svg width="26" height="10" aria-hidden="true"><line x1="0" x2="26" y1="5" y2="5" stroke="${s.color}" stroke-width="3" ${dash[s.tipo || 'real'] ? `stroke-dasharray="${dash[s.tipo || 'real']}"` : ''}/></svg> ${esc(s.nombre)}${s.tipo === 'proy' ? ' (proyectado)' : s.tipo === 'est' ? ' (estimado)' : ' (real)'}</span>`).join('');
+  return `<figure style="margin:0"><svg class="grafico" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.titulo)}"><title>${esc(o.titulo)}</title>${g}${lineas}<text x="${(L + W - R) / 2}" y="${H - 6}" text-anchor="middle" font-size="11.5" fill="#222a26">${esc(o.ejeX || 'Días desde la siembra')}</text><text x="12" y="${(T + H - B) / 2}" transform="rotate(-90 12 ${(T + H - B) / 2})" text-anchor="middle" font-size="11.5" fill="#222a26">${esc(o.ejeY || '')}</text></svg><figcaption class="leyenda">${leyenda}</figcaption></figure>`;
+}
+function svgBarras(grupos, series, o) {
+  if (!grupos.length) return '<div class="vacio">Sin datos para este gráfico todavía.</div>';
+  const W = 620, H = 290, L = 70, R = 16, T = 14, B = 52;
+  const vals = series.flatMap((s) => s.valores).filter(Number.isFinite);
+  let y1 = niceMax(Math.max(0, ...vals)), y0 = Math.min(0, ...vals);
+  if (y0 < 0) y0 = -niceMax(-y0);
+  if (y1 === y0) y1 = y0 + 1;
+  const Y = (y) => T + (1 - (y - y0) / (y1 - y0)) * (H - T - B);
+  const ancho = (W - L - R) / grupos.length, bw = Math.min(46, ancho / (series.length + 1));
+  let g = '';
+  for (let i = 0; i <= 4; i++) { const yv = y0 + (y1 - y0) * i / 4; g += `<line x1="${L}" x2="${W - R}" y1="${Y(yv)}" y2="${Y(yv)}" stroke="#e1e6e2"/><text x="${L - 6}" y="${Y(yv) + 4}" text-anchor="end" font-size="11" fill="#66736c">${esc(fmt(yv, Math.abs(y1) < 10 ? 2 : 0))}</text>`; }
+  g += `<line x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}" stroke="#66736c"/>`;
+  grupos.forEach((nm, gi) => {
+    const cx = L + ancho * gi + ancho / 2;
+    series.forEach((s, si) => {
+      const v = s.valores[gi];
+      if (!Number.isFinite(v)) return;
+      const x = cx - (series.length * bw) / 2 + si * bw, y = Y(Math.max(v, 0)), h = Math.abs(Y(v) - Y(0));
+      const color = v >= 0 ? s.color : '#b3261e';
+      g += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(bw - 3).toFixed(1)}" height="${Math.max(h, 1).toFixed(1)}" fill="${color}" ${s.tipo === 'est' ? 'fill-opacity=".55" stroke="' + color + '" stroke-dasharray="4 3"' : ''}><title>${esc(nm)} · ${esc(s.nombre)}: ${esc(fmt(v))}</title></rect>`;
+    });
+    g += `<text x="${cx}" y="${H - B + 16}" text-anchor="middle" font-size="11" fill="#66736c">${esc(String(nm).slice(0, 12))}</text>`;
+  });
+  const leyenda = series.map((s) => `<span><svg width="14" height="14" aria-hidden="true"><rect width="14" height="14" fill="${s.color}" ${s.tipo === 'est' ? 'fill-opacity=".55"' : ''}/></svg> ${esc(s.nombre)}${s.tipo === 'est' ? ' (estimada)' : ' (real)'}</span>`).join('') + '<span style="color:#b3261e">■ negativo = pérdida</span>';
+  return `<figure style="margin:0"><svg class="grafico" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.titulo)}"><title>${esc(o.titulo)}</title>${g}<text x="12" y="${(T + H - B) / 2}" transform="rotate(-90 12 ${(T + H - B) / 2})" text-anchor="middle" font-size="11.5" fill="#222a26">${esc(o.ejeY || '')}</text></svg><figcaption class="leyenda">${leyenda}</figcaption></figure>`;
+}
+function seriesEstanque(state, an, proy, hoy) {
+  const reg = an.regs;
+  const real = (f) => [{ x: 0, y: f.ini }].concat(reg.filter((r) => r.dias !== null).map((r) => ({ x: r.dias, y: f.val(r) })));
+  const pr = proy && proy.rows ? proy.rows : [];
+  const col = { real: '#1f6f4a', proy: '#1d5fa8', alt: '#9a6200' };
+  const peso = [{ nombre: 'Peso promedio', color: col.real, tipo: 'real', puntos: real({ ini: an.pesoIni, val: (r) => r.peso }).filter((p) => p.y !== null) },
+    { nombre: 'Peso promedio', color: col.proy, tipo: 'proy', puntos: pr.map((r) => ({ x: r.dia, y: r.peso })) }];
+  const bio = [{ nombre: 'Biomasa', color: col.real, tipo: 'real', puntos: real({ ini: an.hist.bio0, val: (r) => r.biomasa }).filter((p) => p.y !== null) },
+    { nombre: 'Biomasa', color: col.proy, tipo: 'proy', puntos: pr.map((r) => ({ x: r.dia, y: r.biomasa })) }];
+  const ali = [{ nombre: 'Alimento del período', color: col.real, tipo: 'real', puntos: reg.filter((r) => r.dias !== null && r.alimentoPeriodo !== null).map((r) => ({ x: r.dias, y: r.alimentoPeriodo })) },
+    { nombre: 'Alimento del período', color: col.proy, tipo: 'proy', puntos: pr.filter((r) => r.alimento !== null).map((r) => ({ x: r.dia, y: r.alimento })) }];
+  const fc = [{ nombre: 'F.C.A. del período', color: col.real, tipo: 'real', puntos: reg.filter((r) => r.dias !== null && r.fcaPeriodo.valor !== null).map((r) => ({ x: r.dias, y: r.fcaPeriodo.valor })) },
+    { nombre: 'F.C.A. acumulado', color: col.alt, tipo: 'real', puntos: reg.filter((r) => r.dias !== null && r.fcaAcum.valor !== null).map((r) => ({ x: r.dias, y: r.fcaAcum.valor })) },
+    { nombre: 'F.C.A. del período', color: col.proy, tipo: 'proy', puntos: pr.filter((r) => r.fca !== null).map((r) => ({ x: r.dia, y: r.fca })) }];
+  const e = an.e;
+  const dia = (f) => (e.fechaSiembra && f ? diasEntre(e.fechaSiembra, f) : null);
+  const ordenar = (arr) => arr.filter((x) => dia(x.fecha) !== null && Number.isFinite(num(x.monto))).sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
+  const acum = (arr) => { let s = 0; return arr.map((x) => { s += num(x.monto); return { x: dia(x.fecha), y: s }; }); };
+  const cos = ordenar(state.costos.filter((c) => c.estanqueId === e.id && c.tipo !== 'proyectado'));
+  const ing = ordenar(state.ingresos.filter((i) => i.estanqueId === e.id && i.tipo !== 'estimado'));
+  const proyEco = economiaEstanque(state, an, hoy, proy);
+  const finDia = pr.length ? pr[pr.length - 1].dia : null;
+  const eco = [{ nombre: 'Costos acumulados', color: '#b3261e', tipo: 'real', puntos: acum(cos) }, { nombre: 'Ingresos acumulados', color: col.real, tipo: 'real', puntos: acum(ing) }];
+  if (finDia !== null) {
+    eco.push({ nombre: 'Costo total', color: '#b3261e', tipo: 'proy', puntos: [{ x: finDia, y: proyEco.costoTotal }] });
+    if (proyEco.ingEst) eco.push({ nombre: 'Ingresos', color: col.proy, tipo: 'proy', puntos: [{ x: finDia, y: proyEco.ingEst }] });
+  }
+  return { peso, bio, ali, fc, eco };
+}
+
+/* ---------- RESUMEN ---------- */
+function v_resumen(state, ui, hoy) {
+  if (!state.estanques.length) return `<h2>Resumen</h2><p class="sub">Vista general de la producción.</p>${sinEstanques()}`;
+  const f = ui.filtro;
+  const G = resumenGranja(state, hoy, f);
+  const k = G.kpi, cfg = state.config;
+  const hayEj = state.estanques.some((e) => e.ejemplo);
+  const filtros = `<div class="fila-filtros" role="group" aria-label="Filtros">
+    ${selc({ etq: 'Especie', opciones: [['', 'Todas']].concat(state.especies.map((s) => [s.id, s.nombre])), valor: f.especie, ui: 'filtro.especie', rerender: true })}
+    ${selc({ etq: 'Estado', opciones: [['', 'Todos']].concat(ESTADOS.map((s) => [s, s])), valor: f.estado, ui: 'filtro.estado', rerender: true })}
+    ${inpt({ etq: 'Siembra desde', tipo: 'date', valor: f.desde, ui: 'filtro.desde', attrs: 'data-rerender="1"' })}
+    ${inpt({ etq: 'Siembra hasta', tipo: 'date', valor: f.hasta, ui: 'filtro.hasta', attrs: 'data-rerender="1"' })}</div>`;
+  const cards = [
+    kpi('Estanques registrados', fmt(k.total, 0), `${fmt(G.filas.length, 0)} con los filtros actuales`),
+    kpi('Estanques activos', fmt(k.activos, 0), 'en crianza o en cosecha'),
+    kpi('Población inicial total', fmt(k.pobIni, 0), 'organismos sembrados'),
+    kpi('Población viva', fmt(k.pobViva, 0), 'real si hay mediciones; si no, estimada'),
+    kpi('Biomasa total actual', `${fmt(k.biomasa)} kg`, 'población × peso promedio'),
+    kpi('Alimento diario requerido', `${fmt(k.alimDiario)} kg`, 'biomasa × tasa del plan'),
+    kpi('Alimento acumulado', `${fmt(k.alimAcum)} kg`, 'registrado en las mediciones'),
+    kpi('F.C.A. de la granja', k.fcaGranja === null ? 'N/D' : fmt(k.fcaGranja), 'Σ alimento ÷ Σ incremento de biomasa (estanques con mediciones)'),
+    kpi('Costo acumulado', fmtMon(k.costo, cfg), `Costo total estimado: ${fmtMon(k.costoTotal, cfg)}`),
+    kpi('Ingresos estimados', fmtMon(k.ingEst, cfg), 'biomasa proyectada × precio'),
+    kpi('Ganancia / pérdida proyectada', fmtMon(k.ganProy, cfg), 'ingresos estimados − costo total', k.ganProy >= 0 ? 'pos' : 'neg')
+  ].join('');
+  const filas = G.filas.map(({ an, eco }) => {
+    const e = an.e;
+    return `<tr><td class="izq"><a href="#" data-accion="abrirEstanque" data-id="${esc(e.id)}">${esc(e.codigo)}</a>${e.ejemplo ? ' ' + etq('ej') : ''}</td><td class="izq">${esc(an.esp ? an.esp.nombre : '—')}</td><td class="izq">${esc(e.estado)}</td><td>${fmt(an.pobIni, 0)}</td><td>${fmt(an.actual.pob, 0)} ${etq(an.actual.fuente === 'real' ? 'real' : an.actual.fuente === 'estimado' ? 'est' : 'inicial')}</td><td>${fmt(an.actual.biomasa)}</td><td>${fmt(an.alimDiario)}</td><td>${fmt(an.alimAcumReal)}</td><td>${an.fcaAcum === null ? 'N/D' : fmt(an.fcaAcum)}</td><td>${fmt(eco.costoReal)}</td><td>${fmt(eco.ingEst)}</td><td class="${eco.ganEst >= 0 ? 'pos' : 'neg'}">${fmt(eco.ganEst)}</td></tr>`;
+  }).join('');
+  const tabla = G.filas.length ? `<div class="tabla-wrap"><table><caption class="leyenda" style="text-align:left;caption-side:top">Comparación por estanque (${esc(cfg.moneda)})</caption><thead><tr><th class="izq">Estanque</th><th class="izq">Especie</th><th class="izq">Estado</th><th>Población inicial</th><th>Población viva</th><th>Biomasa (kg)</th><th>Alimento diario (kg)</th><th>Alimento acum. (kg)</th><th>F.C.A.</th><th>Costo real</th><th>Ingresos est.</th><th>Ganancia est.</th></tr></thead><tbody>${filas}</tbody></table></div>` : vacio('Ningún estanque coincide con los filtros.');
+  const sel = G.filas.find((x) => x.an.e.id === ui.graf) || G.filas[0];
+  let graficos = '';
+  if (sel) {
+    const S = seriesEstanque(state, sel.an, sel.proy, hoy);
+    const gs = (t, ser, y) => `<div class="tarjeta"><h3>${t}</h3>${svgLineas(ser, { titulo: `${t} del estanque ${sel.an.e.codigo}`, ejeY: y })}</div>`;
+    const barras = svgBarras(G.filas.map((x) => x.an.e.codigo), [{ nombre: 'Ganancia real', color: '#1f6f4a', valores: G.filas.map((x) => x.eco.ganReal), tipo: 'real' }, { nombre: 'Ganancia estimada', color: '#1d5fa8', valores: G.filas.map((x) => x.eco.ganEst), tipo: 'est' }], { titulo: 'Ganancias y pérdidas por estanque', ejeY: `Ganancia (${cfg.moneda})` });
+    graficos = `<h3>Gráficos</h3><div class="grid g3" style="margin-bottom:10px">${selc({ etq: 'Estanque para los gráficos', opciones: G.filas.map((x) => [x.an.e.id, x.an.e.codigo]), valor: sel.an.e.id, ui: 'graf', rerender: true })}</div>
+      <div class="grid g2">${gs('Evolución del peso promedio', S.peso, 'Peso (g)')}${gs('Crecimiento de la biomasa', S.bio, 'Biomasa (kg)')}${gs('Consumo de alimento', S.ali, 'Alimento (kg por período)')}${gs('Evolución del F.C.A.', S.fc, 'F.C.A.')}
+      <div class="tarjeta"><h3>Costos e ingresos a lo largo del ciclo</h3>${svgLineas(S.eco, { titulo: 'Costos e ingresos', ejeY: `Monto (${cfg.moneda})`, yFmt: (y) => fmt(y, 0) })}<p class="sub">Los puntos sueltos al final son el costo total y los ingresos proyectados.</p></div>
+      <div class="tarjeta"><h3>Ganancias y pérdidas entre estanques</h3>${barras}</div></div>`;
+  }
+  return `<h2>Resumen</h2><p class="sub">Estado general de la producción. Los valores <b>reales</b> vienen de tus mediciones; los <b>estimados</b> y <b>proyectados</b> se calculan con el plan configurado.</p>
+    ${hayEj ? aviso('info', 'Hay <b>datos de EJEMPLO</b> (marcados con la etiqueta EJEMPLO). No son datos reales de producción. Puedes quitarlos en Configuración › Datos.') : ''}
+    ${filtros}<div class="grid kpis">${cards}</div><h3>Estanques</h3>${tabla}${graficos}`;
+}
+
+/* ---------- ESTANQUES ---------- */
+function v_estanques(state, ui, hoy) {
+  if (ui.formEst) return v_form_estanque(state, ui);
+  const filas = state.estanques.map((e) => {
+    const an = analizarEstanque(state, e, hoy);
+    return `<tr><td class="izq"><b>${esc(e.codigo)}</b>${e.ejemplo ? ' ' + etq('ej') : ''}</td><td class="izq">${esc(e.nombre)}</td><td class="izq">${esc(an.esp ? an.esp.nombre : '—')}</td><td class="izq">${esc(e.estado)}</td><td>${fmt(an.area, 0)}</td><td>${an.vol ? fmt(an.vol, 0) : '—'}</td><td class="izq">${fmtFecha(e.fechaSiembra)}</td><td>${fmt(an.pobIni, 0)}</td><td>${an.dens === null ? '—' : fmt(an.dens)}</td>
+      <td class="izq"><button class="btn chico sec" data-accion="editarEstanque" data-id="${esc(e.id)}">Editar</button> <button class="btn chico sec" data-accion="reporte" data-id="${esc(e.id)}">Reporte</button> <button class="btn chico peligro" data-accion="eliminarEstanque" data-id="${esc(e.id)}">Eliminar</button></td></tr>`;
+  }).join('');
+  return `<h2>Estanques</h2><p class="sub">Registra, edita, consulta y elimina estanques. La población y la densidad se calculan una a partir de la otra.</p>
+    <div class="acciones" style="margin:0 0 12px"><button class="btn" data-accion="nuevoEstanque">+ Nuevo estanque</button></div>
+    ${state.estanques.length ? `<div class="tabla-wrap"><table><thead><tr><th class="izq">Código</th><th class="izq">Nombre</th><th class="izq">Especie</th><th class="izq">Estado</th><th>Área (m²)</th><th>Volumen (m³)</th><th class="izq">Siembra</th><th>Población inicial</th><th>Densidad (org/m²)</th><th class="izq">Acciones</th></tr></thead><tbody>${filas}</tbody></table></div>` : sinEstanques()}`;
+}
+function v_form_estanque(state, ui) {
+  const e = ui.formEst, nuevo = ui.formEstNuevo;
+  const f = (k, etqt, o = {}) => inpt(Object.assign({ etq: etqt, name: k, valor: e[k], id: `fe-${k}` }, o));
+  return `<h2>${nuevo ? 'Nuevo estanque' : `Editar estanque ${esc(e.codigo)}`}</h2><p class="sub">Los campos con * son obligatorios. El resto puede completarse después.</p>
+  <form id="form-estanque" novalidate><div id="fe-errores" aria-live="assertive"></div>
+  <fieldset class="tarjeta"><legend><b>Identificación</b></legend><div class="grid">
+    ${f('codigo', 'Número o código del estanque', { tipo: 'text', req: true })}${f('nombre', 'Nombre (opcional)', { tipo: 'text' })}
+    ${selc({ etq: 'Especie cultivada *', name: 'especieId', id: 'fe-especieId', valor: e.especieId, opciones: [['', 'Selecciona…']].concat(state.especies.map((s) => [s.id, s.nombre])) })}
+    ${selc({ etq: 'Estado', name: 'estado', id: 'fe-estado', valor: e.estado, opciones: ESTADOS.map((s) => [s, s]) })}
+    ${f('fechaSiembra', 'Fecha de siembra', { tipo: 'date' })}${f('fechaCosecha', 'Fecha estimada de cosecha', { tipo: 'date' })}</div></fieldset>
+  <fieldset class="tarjeta"><legend><b>Dimensiones</b></legend><div class="grid">
+    ${f('area', 'Área', { req: true, min: 0 })}${selc({ etq: 'Unidad del área', name: 'areaUnidad', id: 'fe-areaUnidad', valor: e.areaUnidad, opciones: [['m2', 'metros cuadrados (m²)'], ['ha', 'hectáreas (ha)']] })}
+    ${f('profundidad', 'Profundidad promedio (opcional)', { unidad: 'm', min: 0 })}
+    ${inpt({ etq: 'Volumen estimado de agua', unidad: 'm³', tipo: 'text', ro: true, id: 'fe-volumen', valor: '', ayuda: 'Área × profundidad' })}</div></fieldset>
+  <fieldset class="tarjeta"><legend><b>Siembra</b></legend><div class="grid">
+    ${f('poblacionInicial', 'Organismos sembrados', { unidad: 'org.', min: 0, ayuda: 'Escribe este dato o la densidad: el otro se calcula.' })}
+    ${f('densidad', 'Densidad de siembra', { unidad: 'org/m²', min: 0 })}
+    ${f('pesoInicial', 'Peso inicial promedio', { unidad: 'g', min: 0, ayuda: 'Si lo dejas vacío se usa el de la especie.' })}
+    ${f('pesoObjetivo', 'Peso objetivo de cosecha', { unidad: 'g', min: 0, ayuda: 'Si lo dejas vacío se usa el de la especie.' })}
+    ${f('mortTransporte', 'Mortalidad en el transporte', { unidad: '%', min: 0, max: 99.99 })}
+    ${inpt({ etq: 'Organismos a comprar', unidad: 'org.', tipo: 'text', ro: true, id: 'fe-comprados', valor: '', ayuda: 'Sembrados ÷ (1 − mortalidad de transporte)' })}</div></fieldset>
+  <fieldset class="tarjeta"><legend><b>Preparación (opcional)</b></legend><div class="grid">
+    ${f('calKgHa', 'Cal viva (CaO)', { unidad: 'kg/ha', min: 0 })}${f('fertIniKgHa', 'Fertilizante inicial', { unidad: 'kg/ha', min: 0 })}${f('fertMensKgHa', 'Fertilizante mensual', { unidad: 'kg/ha', min: 0 })}
+    ${inpt({ etq: 'Cantidad total de insumos', tipo: 'text', ro: true, id: 'fe-insumos', valor: '', ayuda: 'Cal e inicial/mensual del fertilizante, en kg para el área indicada' })}</div></fieldset>
+  <fieldset class="tarjeta"><legend><b>Precios (opcional)</b></legend><div class="grid">
+    ${f('precioCompra', `Precio de compra por organismo (${state.config.moneda})`, { min: 0 })}${f('precioAlimento', `Precio del alimento por kg (${state.config.moneda})`, { min: 0 })}${f('precioVenta', `Precio de venta por kg (${state.config.moneda})`, { min: 0, ayuda: 'Si lo dejas vacío se usa el de la especie.' })}</div></fieldset>
+  <div class="campo tarjeta"><label for="fe-obs">Observaciones</label><textarea id="fe-obs" name="obs">${esc(e.obs)}</textarea></div>
+  <div class="acciones"><button class="btn" type="submit">Guardar estanque</button><button class="btn sec" type="button" data-accion="cancelarEstanque">Cancelar</button></div></form>`;
+}
+
+/* ---------- PRODUCCIÓN ---------- */
+function v_produccion(state, ui, hoy) {
+  if (!state.estanques.length) return `<h2>Producción</h2>${sinEstanques()}`;
+  const e = state.estanques.find((x) => x.id === ui.sel) || state.estanques[0];
+  const m = ui.med, corr = ui.medCorrige;
+  return `<h2>Producción</h2><p class="sub">Población, peso y biomasa del estanque. Al escribir un peso o una población nuevos, los resultados se actualizan al instante.</p>
+  <div class="grid g3">${selEstanque(state, ui)}</div>
+  <div id="live">${v_produccion_live(state, ui, hoy)}</div>
+  <form id="form-medicion" class="tarjeta" novalidate><h3>${corr ? 'Corregir medición (se conserva el registro anterior en el historial)' : 'Registrar medición / muestreo'}</h3><div id="fm-errores" aria-live="assertive"></div>
+   <div class="grid">${inpt({ etq: 'Fecha de la medición *', tipo: 'date', valor: m.fecha, ui: 'med.fecha', req: true })}
+   ${inpt({ etq: 'Peso promedio *', unidad: 'g', valor: m.peso, ui: 'med.peso', min: 0, req: true })}
+   ${inpt({ etq: 'Población viva (contada o estimada)', unidad: 'org.', valor: m.poblacion, ui: 'med.poblacion', min: 0, ayuda: 'Si la dejas vacía se usa la anterior menos los muertos.' })}
+   ${inpt({ etq: 'Organismos muertos desde la medición anterior', unidad: 'org.', valor: m.muertos, ui: 'med.muertos', min: 0 })}
+   ${inpt({ etq: 'Alimento suministrado en el período', unidad: 'kg', valor: m.alimentoSuministrado, ui: 'med.alimentoSuministrado', min: 0 })}
+   ${inpt({ etq: 'Alimento consumido (si se conoce)', unidad: 'kg', valor: m.alimentoConsumido, ui: 'med.alimentoConsumido', min: 0, ayuda: 'Si se llena, se usa en lugar del suministrado.' })}
+   ${inpt({ etq: 'Biomasa retirada (cosecha parcial)', unidad: 'kg', valor: m.biomasaRetirada, ui: 'med.biomasaRetirada', min: 0 })}
+   ${inpt({ etq: 'Biomasa pesada (opcional)', unidad: 'kg', valor: m.biomasaMedida, ui: 'med.biomasaMedida', min: 0, ayuda: 'Sirve para comprobar la biomasa calculada.' })}</div>
+   <div class="campo"><label for="med-obs">Observaciones</label><textarea id="med-obs" data-ui="med.obs">${esc(m.obs)}</textarea></div>
+   <div class="acciones"><button class="btn" type="submit">${corr ? 'Guardar corrección' : 'Guardar medición en el historial'}</button>${corr ? '<button class="btn sec" type="button" data-accion="cancelarCorreccion">Cancelar corrección</button>' : ''}</div></form>`;
+}
+function v_produccion_live(state, ui, hoy) {
+  const e = state.estanques.find((x) => x.id === ui.sel) || state.estanques[0];
+  if (!e) return '';
+  const an = analizarEstanque(state, e, hoy), cfg = state.config, m = ui.med;
+  let peso = an.actual.peso, pob = an.actual.pob, fuente = an.actual.fuente;
+  const pesoD = num(m.peso), pobD = num(m.poblacion), muD = num(m.muertos);
+  const avisos = [];
+  if (pesoD !== null) { if (pesoD > 0) { peso = pesoD; fuente = 'borrador'; } else avisos.push(aviso('error', 'El peso promedio debe ser mayor que cero: no se puede calcular la biomasa con ese valor.')); }
+  if (pobD !== null) { if (pobD >= 0) { pob = pobD; fuente = 'borrador'; } else avisos.push(aviso('error', 'La población viva no puede ser negativa.')); }
+  else if (muD !== null && an.actual.pob !== null) { pob = an.actual.pob - muD; fuente = 'borrador'; }
+  if (pob !== null && an.pobIni !== null && pob > an.pobIni) avisos.push(aviso('adv', `La población viva (${fmt(pob, 0)}) supera la sembrada (${fmt(an.pobIni, 0)}): la supervivencia sería mayor que 100 %.`));
+  const bio = biomasaKg(pob, peso, cfg);
+  const superv = (an.pobIni > 0 && pob !== null) ? pob / an.pobIni * 100 : null;
+  const tag = fuente === 'borrador' ? etq('borrador') : fuente === 'real' ? etq('real') : fuente === 'estimado' ? etq('est') : etq('inicial');
+  const falt = [];
+  if (an.pobIni === null) falt.push('población inicial');
+  if (an.pesoIni === null) falt.push('peso inicial');
+  if (an.area === null || !(an.area > 0)) falt.push('área');
+  if (!an.pesoObj) falt.push('peso objetivo');
+  // F.C.A. del período en borrador
+  let fcaTxt = '';
+  const aliD = num(m.alimentoConsumido) !== null ? num(m.alimentoConsumido) : num(m.alimentoSuministrado);
+  if (aliD !== null && bio !== null) {
+    const bioPrev = an.ult && an.ult.biomasa !== null ? an.ult.biomasa : an.hist.bio0;
+    const inc = bioPrev === null || bioPrev === undefined ? null : bio + (num(m.biomasaRetirada) || 0) - bioPrev;
+    const r = fca(aliD, inc);
+    fcaTxt = r.valor === null ? aviso('adv', `F.C.A. del período: ${esc(r.motivo)}`) : aviso('info', `F.C.A. del período con estos datos: <b>${fmt(r.valor)}</b> (alimento ${fmt(aliD)} kg ÷ incremento de biomasa ${fmt(inc)} kg).`);
+  }
+  const cards = [
+    kpi('Población inicial', fmt(an.pobIni, 0), an.dens === null ? '' : `${fmt(an.dens)} org/m²${an.densVol ? ` · ${fmt(an.densVol)} org/m³` : ''}`),
+    kpi('Vivos estimados (especie)', fmt(an.vivosEst, 0), an.supervEsp === null ? 'la especie no tiene supervivencia configurada' : `supervivencia de la especie ${fmt(an.supervEsp)} %`),
+    kpi('Población viva actual', `${fmt(pob, 0)} ${tag}`, mortAc(an, pob)),
+    kpi('Supervivencia', superv === null ? 'N/D' : `${fmt(superv)} %`, 'población viva ÷ inicial'),
+    kpi('Peso inicial', an.pesoIni === null ? '—' : `${fmt(an.pesoIni)} g`),
+    kpi('Peso promedio actual', `${peso === null ? '—' : fmt(peso)} g ${tag}`, an.incrementoPeso === null || peso === null ? '' : `incremento: ${fmt(peso - an.pesoIni)} g`),
+    kpi('Peso objetivo de cosecha', an.pesoObj ? `${fmt(an.pesoObj)} g` : 'sin definir', peso !== null && an.pesoObj ? `${fmt(peso / an.pesoObj * 100, 1)} % del objetivo` : ''),
+    kpi('Biomasa total', `${fmt(bio)} kg ${tag}`, 'población × peso ÷ 1000'),
+    kpi('Biomasa por hectárea', bio !== null && an.area > 0 ? `${fmt(bio * 10000 / an.area)} kg/ha` : 'N/D'),
+    kpi('Biomasa por m³', bio !== null && an.vol ? `${fmt(bio / an.vol, 3)} kg/m³` : 'N/D', an.vol ? '' : 'indica la profundidad del estanque')
+  ].join('');
+  return `${falt.length ? aviso('adv', `Faltan datos para completar los cálculos: <b>${esc(falt.join(', '))}</b>.`) : ''}${avisos.join('')}
+    <div class="grid kpis" style="margin:10px 0">${cards}</div>${fcaTxt}`;
+}
+function mortAc(an, pob) {
+  if (an.pobIni === null || pob === null) return '';
+  return `mortalidad acumulada: ${fmt(an.pobIni - pob, 0)} org.`;
+}
+/*</PURE2>*/
+
+/*<PURE3>*/
+/* ---------- ALIMENTACIÓN y F.C.A. ---------- */
+function v_alimentacion(state, ui, hoy) {
+  if (!state.estanques.length) return `<h2>Alimentación</h2>${sinEstanques()}`;
+  const todos = ui.sel === '__todos';
+  const a = ui.ali, fm = ui.fcaMan;
+  const form = todos ? '' : `<div class="tarjeta"><h3>Parámetros de alimentación</h3><div class="grid">
+    ${inpt({ etq: 'Tasa de alimentación (déjala vacía para usar la del plan)', unidad: '% biomasa/día', valor: a.tasa, ui: 'ali.tasa', min: 0 })}
+    ${inpt({ etq: 'Raciones: veces al día o % de cada una', tipo: 'text', valor: a.raciones, ui: 'ali.raciones', ayuda: 'Ej.: 3 (iguales) o 30, 40, 30 (suman 100)' })}</div></div>`;
+  const fcaForm = todos ? '' : `<div class="tarjeta"><h3>Calculadora de F.C.A.</h3><p class="sub">F.C.A. = alimento consumido acumulado (kg) ÷ incremento de biomasa (kg). Prueba con tus propios valores:</p><div class="grid">
+    ${inpt({ etq: 'Alimento suministrado', unidad: 'kg', valor: fm.sum, ui: 'fcaMan.sum', min: 0 })}
+    ${inpt({ etq: 'Alimento consumido (si se conoce)', unidad: 'kg', valor: fm.cons, ui: 'fcaMan.cons', min: 0, ayuda: 'Si se llena, se usa en lugar del suministrado.' })}
+    ${inpt({ etq: 'Biomasa inicial', unidad: 'kg', valor: fm.bioIni, ui: 'fcaMan.bioIni', min: 0 })}
+    ${inpt({ etq: 'Biomasa actual', unidad: 'kg', valor: fm.bioAct, ui: 'fcaMan.bioAct', min: 0 })}
+    ${inpt({ etq: 'Biomasa retirada (cosechas parciales)', unidad: 'kg', valor: fm.ret, ui: 'fcaMan.ret', min: 0 })}
+    ${inpt({ etq: 'Período evaluado (informativo)', unidad: 'días', valor: fm.dias, ui: 'fcaMan.dias', min: 0 })}</div></div>`;
+  return `<h2>Alimentación</h2><p class="sub">Alimento diario, semanal, mensual y acumulado, y control del F.C.A.</p>
+  <div class="grid g3">${selEstanque(state, ui, true)}</div>${form}${fcaForm}<div id="live">${v_alim_live(state, ui, hoy)}</div>`;
+}
+function v_alim_live(state, ui, hoy) {
+  const cfg = state.config;
+  const filaGranja = state.estanques.map((e) => {
+    const an = analizarEstanque(state, e, hoy);
+    return { an, d: an.alimDiario };
+  });
+  const totD = suma(filaGranja.map((x) => x.d));
+  const tabla = `<div class="tarjeta"><h3>Alimentación de toda la granja</h3><div class="tabla-wrap"><table><thead><tr><th class="izq">Estanque</th><th>Biomasa (kg)</th><th>Tasa del plan (%)</th><th>Diario (kg)</th><th>Semanal (kg)</th><th>Mensual (kg)</th></tr></thead><tbody>${filaGranja.map(({ an, d }) => `<tr><td class="izq">${esc(an.e.codigo)}</td><td>${fmt(an.actual.biomasa)}</td><td>${an.tasaActual === null ? 'sin tasa' : fmt(an.tasaActual, 1)}</td><td>${fmt(d)}</td><td>${fmt(d === null ? null : d * 7)}</td><td>${fmt(d === null ? null : d * 30)}</td></tr>`).join('')}</tbody><tfoot><tr><td class="izq">Total granja</td><td>${fmt(suma(filaGranja.map((x) => x.an.actual.biomasa)))}</td><td></td><td>${fmt(totD)}</td><td>${fmt(totD * 7)}</td><td>${fmt(totD * 30)}</td></tr></tfoot></table></div><p class="sub" style="margin-top:8px">Semanal = diario × 7; mensual = diario × 30. Supone una tasa constante dentro de cada período; para más realismo, cambia la tasa según la etapa en Proyecciones o en la especie.</p></div>`;
+  if (ui.sel === '__todos') return tabla;
+  const e = state.estanques.find((x) => x.id === ui.sel) || state.estanques[0];
+  if (!e) return '';
+  const an = analizarEstanque(state, e, hoy);
+  const out = [];
+  const tasaUser = num(ui.ali.tasa);
+  const tasa = tasaUser !== null ? tasaUser : an.tasaActual;
+  const origen = tasaUser !== null ? 'escrita por ti' : 'del plan';
+  if (tasaUser !== null && tasaUser < 0) out.push(aviso('error', 'La tasa de alimentación no puede ser negativa.'));
+  const tMin = an.esp ? num(an.esp.tasaMin) : null, tMax = an.esp ? num(an.esp.tasaMax) : null;
+  if (tasa !== null && tasa >= 0 && ((tMin !== null && tasa < tMin) || (tMax !== null && tasa > tMax))) out.push(aviso('adv', `La tasa ${fmt(tasa, 1)} % está fuera del rango configurado para ${esc(an.esp.nombre)} (${tMin ?? '—'} – ${tMax ?? '—'} %).`));
+  if (tasa === null) out.push(aviso('adv', 'No hay tasa de alimentación: escríbela arriba o configúrala en la especie / el plan.'));
+  if (an.actual.biomasa === null) out.push(aviso('adv', 'No hay biomasa actual: faltan población o peso.'));
+  const bio = an.actual.biomasa;
+  const dia = tasa !== null && tasa >= 0 ? alimentoDiario(bio, tasa) : null;
+  const pr = proyeccionPlan(state, an, hoy);
+  const resto = pr && pr.resumen ? pr.resumen.alimentoTotal : null;
+  const totalCiclo = resto !== null ? an.alimAcumReal + resto : null;
+  const rac = parseRaciones(ui.ali.raciones);
+  let racTxt = '';
+  if (!rac.ok) racTxt = aviso('adv', esc(rac.error));
+  else if (rac.fracs && dia !== null) racTxt = aviso('info', `Reparto del alimento diario en ${rac.fracs.length} raciones: ${rac.fracs.map((f) => fmt(dia * f) + ' kg').join(' · ')}`);
+  const cards = [kpi('Biomasa actual', `${fmt(bio)} kg`, `${an.actual.fuente === 'real' ? 'REAL' : an.actual.fuente === 'estimado' ? 'ESTIMADA' : 'INICIAL'}`),
+    kpi('Tasa de alimentación', tasa === null ? 'N/D' : `${fmt(tasa, 1)} %`, tasa === null ? '' : `de la biomasa por día (${origen})`),
+    kpi('Alimento diario', dia === null ? 'N/D' : `${fmt(dia)} kg`), kpi('Alimento semanal', dia === null ? 'N/D' : `${fmt(dia * 7)} kg`, 'diario × 7'),
+    kpi('Alimento mensual', dia === null ? 'N/D' : `${fmt(dia * 30)} kg`, 'diario × 30'),
+    kpi('Acumulado registrado', `${fmt(an.alimAcumReal)} kg`, 'suma de las mediciones'),
+    kpi('Acumulado por ciclo (total)', totalCiclo === null ? 'N/D' : `${fmt(totalCiclo)} kg`, totalCiclo === null ? 'requiere un plan con pesos y tasas' : `registrado + proyectado (${fmt(resto)} kg) ${etq('proy')}`)].join('');
+  // F.C.A.
+  const fm = ui.fcaMan;
+  const aliM = num(fm.cons) !== null ? num(fm.cons) : num(fm.sum);
+  const incM = (num(fm.bioAct) !== null && num(fm.bioIni) !== null) ? num(fm.bioAct) + (num(fm.ret) || 0) - num(fm.bioIni) : null;
+  const rm = fca(aliM, incM);
+  const fcaMan = (num(fm.sum) === null && num(fm.cons) === null) ? '' : (rm.valor === null ? aviso('adv', esc(rm.motivo)) : aviso('ok', `F.C.A. calculado: <b>${fmt(rm.valor)}</b> = ${fmt(aliM)} kg ÷ ${fmt(incM)} kg ${num(fm.cons) !== null ? '(con alimento consumido)' : '(con alimento suministrado)'}`));
+  const u = an.ult;
+  const esperado = an.esp ? num(an.esp.fcaEsperado) : null;
+  const metodo = cfg.fcaTotalMetodo === 'cosecha' ? 'alimento acumulado ÷ biomasa actual (+ retirada), como en la hoja del profesor' : 'alimento acumulado ÷ (biomasa actual + retirada − biomasa inicial)';
+  const seg = u ? `<div class="tabla-wrap"><table><thead><tr><th class="izq">Fecha</th><th>Alimento período (kg)</th><th>Incremento biomasa (kg)</th><th>F.C.A. período</th><th>F.C.A. acumulado</th></tr></thead><tbody>${an.regs.map((r) => `<tr><td class="izq">${fmtFecha(r.fecha)}</td><td>${fmt(r.alimentoPeriodo)}${r.usaConsumido ? ' (consumido)' : ''}</td><td>${fmt(r.incremento)}</td><td>${r.fcaPeriodo.valor === null ? `<span title="${esc(r.fcaPeriodo.motivo)}">N/D</span>` : fmt(r.fcaPeriodo.valor)}</td><td>${r.fcaAcum.valor === null ? 'N/D' : fmt(r.fcaAcum.valor)}</td></tr>`).join('')}</tbody></table></div>` : vacio('Aún no hay mediciones para monitorear el F.C.A.');
+  const fcaCards = [kpi('F.C.A. acumulado (real)', u && u.fcaAcum.valor !== null ? `${fmt(u.fcaAcum.valor)} ${etq('real')}` : 'N/D'), kpi('F.C.A. del último período (real)', u && u.fcaPeriodo.valor !== null ? fmt(u.fcaPeriodo.valor) : 'N/D'),
+    kpi('F.C.A. proyectado a cosecha', pr && pr.resumen && pr.resumen.fcaProyectado !== null ? `${fmt(pr.resumen.fcaProyectado)} ${etq('proy')}` : 'N/D', 'solo del tramo que falta'), kpi('F.C.A. objetivo de la especie', esperado === null ? 'sin definir' : fmt(esperado))].join('');
+  return `${out.join('')}<div class="grid kpis">${cards}</div>${racTxt}${tabla}
+    <div class="tarjeta"><h3>Monitoreo del F.C.A. · ${esc(e.codigo)}</h3>${fcaMan}<div class="grid kpis" style="margin:10px 0">${fcaCards}</div>${seg}
+    <details class="plegable"><summary>Método de cálculo</summary><p>Período: <span class="formula">alimento del período ÷ (biomasa actual + biomasa retirada − biomasa anterior)</span>. Acumulado: <span class="formula">${esc(metodo)}</span>. Se usa el alimento <b>consumido</b> cuando se registra y, si no, el <b>suministrado</b>. La biomasa de los peces muertos no se suma al incremento (se trabaja con biomasa viva) y las cosechas parciales o retiros se suman al incremento mediante «biomasa retirada». Si el incremento es cero o negativo no se calcula el F.C.A. y se muestra una advertencia.</p></details></div>`;
+}
+
+/* ---------- PROYECCIONES ---------- */
+function iniciarProyUI(state, ui, hoy) {
+  const e = state.estanques.find((x) => x.id === ui.sel);
+  ui.proyFor = ui.sel;
+  if (!e) return;
+  const an = analizarEstanque(state, e, hoy);
+  ui.proy = { plazo: 'largo', cant: '', unidad: 'dias', inicio: an.regs.length ? 'real' : 'siembra', modelo: 'pesos', pesos: an.plan.pesos.join(', '), gdp: '', tce: '', mort: an.plan.mortalidades.join(', '),
+    tasas: an.plan.tasas.join(', '), paso: '', superConst: false, planDias: String(an.plan.planDias), fechaCosecha: e.fechaCosecha || '', ajustar: true };
+}
+function v_proyecciones(state, ui, hoy) {
+  if (!state.estanques.length) return `<h2>Proyecciones</h2>${sinEstanques()}`;
+  if (!state.estanques.some((x) => x.id === ui.sel)) ui.sel = state.estanques[0].id;
+  if (ui.proyFor !== ui.sel || !ui.proy) iniciarProyUI(state, ui, hoy);
+  const p = ui.proy;
+  const opt = (a) => a.map((x) => [x[0], x[1]]);
+  return `<h2>Proyecciones</h2><p class="sub">Crecimiento, población, biomasa y alimento a corto, mediano y largo plazo con un modelo explícito. Nada se asume en silencio: los supuestos se listan junto al resultado.</p>
+  <div class="grid g3">${selEstanque(state, ui)}</div>
+  <div class="tarjeta"><h3>Horizonte y modelo</h3><div class="grid">
+    ${selc({ etq: 'Plazo', opciones: opt([['corto', 'Corto plazo (días o semanas)'], ['mediano', 'Mediano plazo (meses)'], ['largo', 'Largo plazo (hasta la cosecha)']]), valor: p.plazo, ui: 'proy.plazo', rerender: true })}
+    ${p.plazo === 'corto' ? selc({ etq: 'Unidad', opciones: [['dias', 'días'], ['semanas', 'semanas']], valor: p.unidad, ui: 'proy.unidad' }) + inpt({ etq: 'Cantidad', valor: p.cant, ui: 'proy.cant', min: 1 }) : ''}
+    ${p.plazo === 'mediano' ? inpt({ etq: 'Cantidad de meses (de 30 días)', valor: p.cant, ui: 'proy.cant', min: 1 }) : ''}
+    ${p.plazo === 'largo' ? inpt({ etq: 'Fecha estimada de cosecha', tipo: 'date', valor: p.fechaCosecha, ui: 'proy.fechaCosecha', ayuda: 'Vacía = fin del plan de pesos.' }) : ''}
+    ${selc({ etq: 'Punto de partida', opciones: [['real', 'Última medición real'], ['siembra', 'Siembra (plan inicial)']], valor: p.inicio, ui: 'proy.inicio' })}
+    ${inpt({ etq: 'Paso de cálculo (vacío = automático)', unidad: 'días', valor: p.paso, ui: 'proy.paso', min: 1, ayuda: 'Cada paso calcula el alimento con la biomasa del inicio del paso.' })}
+    ${selc({ etq: 'Modelo de crecimiento', opciones: [['pesos', 'Pesos esperados por período (interpolación lineal)'], ['gdp', 'Ganancia diaria constante (g/día)'], ['tce', 'Crecimiento específico constante (%/día)']], valor: p.modelo, ui: 'proy.modelo', rerender: true })}
+    ${p.modelo === 'pesos' ? inpt({ etq: 'Pesos esperados al final de cada período', tipo: 'text', valor: p.pesos, ui: 'proy.pesos', unidad: 'g', ayuda: 'Separados por comas, desde la siembra.' }) + inpt({ etq: 'Días de cada período del plan', valor: p.planDias, ui: 'proy.planDias', min: 1 }) : ''}
+    ${p.modelo === 'gdp' ? inpt({ etq: 'Ganancia diaria de peso', valor: p.gdp, ui: 'proy.gdp', unidad: 'g/día' }) : ''}
+    ${p.modelo === 'tce' ? inpt({ etq: 'Tasa de crecimiento específico', valor: p.tce, ui: 'proy.tce', unidad: '%/día' }) : ''}
+    ${inpt({ etq: 'Mortalidad de cada período', tipo: 'text', valor: p.mort, ui: 'proy.mort', unidad: '%', ayuda: 'Por período del plan. Vacío = sin mortalidad.' })}
+    ${inpt({ etq: 'Tasa de alimentación de cada período', tipo: 'text', valor: p.tasas, ui: 'proy.tasas', unidad: '%', ayuda: 'Una por período; se repite la última.' })}</div>
+    <div class="grid" style="margin-top:8px"><div class="campo"><label><input type="checkbox" data-ui="proy.superConst"${p.superConst ? ' checked' : ''} style="width:auto;min-height:0"> Suponer supervivencia constante (sin mortalidad)</label><span class="ayuda">Supuesto explícito: úsalo solo si lo quieres.</span></div>
+    ${p.modelo === 'pesos' ? `<div class="campo"><label><input type="checkbox" data-ui="proy.ajustar"${p.ajustar ? ' checked' : ''} style="width:auto;min-height:0"> Ajustar el plan al peso real de la última medición</label><span class="ayuda">Aplica la proporción real/plan a los pesos siguientes.</span></div>` : ''}</div>
+    <div class="acciones"><button class="btn sec" type="button" data-accion="guardarPlan">Guardar como plan del estanque</button><button class="btn sec" type="button" data-accion="restaurarPlan">Restaurar plan de la especie</button></div></div>
+  <div id="live">${v_proy_live(state, ui, hoy)}</div>`;
+}
+function calcularProyeccion(state, ui, hoy) {
+  const e = state.estanques.find((x) => x.id === ui.sel);
+  if (!e) return { errores: ['Selecciona un estanque.'] };
+  if (!ui.proy || ui.proyFor !== ui.sel) iniciarProyUI(state, ui, hoy);
+  const p = ui.proy, an = analizarEstanque(state, e, hoy);
+  const pesos = parseLista(p.pesos), mort = parseLista(p.mort), tasas = parseLista(p.tasas);
+  const errores = [];
+  if (pesos === null) errores.push('Los pesos esperados deben ser números separados por comas.');
+  if (mort === null) errores.push('Las mortalidades deben ser números separados por comas.');
+  if (tasas === null) errores.push('Las tasas deben ser números separados por comas.');
+  if ((pesos || []).some((v) => v <= 0)) errores.push('Los pesos esperados deben ser mayores que cero.');
+  if ((mort || []).some((v) => v < 0 || v >= 100)) errores.push('Las mortalidades deben estar entre 0 y 100 %.');
+  if ((tasas || []).some((v) => v < 0)) errores.push('Las tasas no pueden ser negativas.');
+  const planDias = num(p.planDias);
+  if (p.modelo === 'pesos' && !(planDias > 0)) errores.push('Los días de cada período deben ser mayores que cero.');
+  if (an.pobIni === null || an.pesoIni === null) errores.push('Faltan la población inicial o el peso inicial del estanque.');
+  if (errores.length) return { errores, an };
+  const real = p.inicio === 'real' && an.actual.fuente === 'real';
+  const inicio = real ? (an.actual.dias || 0) : 0;
+  const pd = planDias || an.plan.planDias;
+  let horizonte;
+  if (p.plazo === 'corto') { const c = num(p.cant); if (!(c > 0)) return { errores: ['Indica la cantidad de días o semanas.'], an }; horizonte = c * (p.unidad === 'semanas' ? 7 : 1); }
+  else if (p.plazo === 'mediano') { const c = num(p.cant); if (!(c > 0)) return { errores: ['Indica la cantidad de meses.'], an }; horizonte = c * 30; }
+  else {
+    let finDia = null;
+    if (p.fechaCosecha && e.fechaSiembra) finDia = diasEntre(e.fechaSiembra, p.fechaCosecha);
+    else if (p.modelo === 'pesos' && (pesos || []).length) finDia = pesos.length * pd;
+    if (finDia !== null && p.modelo === 'pesos' && (pesos || []).length && finDia > pesos.length * pd && finDia - pesos.length * pd <= 3) finDia = pesos.length * pd; // 2 ene → 2 jul = 181 días ≈ 6 meses de 30 días
+    if (finDia === null) return { errores: ['Para el largo plazo indica la fecha estimada de cosecha (y la fecha de siembra del estanque).'], an };
+    horizonte = finDia - inicio;
+    if (!(horizonte > 0)) return { errores: ['La fecha estimada de cosecha ya pasó respecto del punto de partida.'], an };
+  }
+  const paso = num(p.paso) > 0 ? num(p.paso) : (p.plazo === 'corto' ? (horizonte <= 14 ? 1 : 7) : pd);
+  const proy = proyectar({
+    cfg: state.config, inicioDias: inicio, fechaSiembra: e.fechaSiembra, pobInicial: real ? an.actual.pob : an.pobIni, pesoInicial: real ? an.actual.peso : an.pesoIni,
+    pasoDias: paso, horizonteDias: horizonte, planDias: pd, modelo: { tipo: p.modelo, pesos, pesoSiembra: an.pesoIni, gdp: num(p.gdp), tce: num(p.tce) }, ajustarAReal: !!p.ajustar && real,
+    mortalidades: mort || [], supervivenciaConstante: !!p.superConst, tasas: tasas || [], pesoObjetivo: an.pesoObj
+  });
+  return { proy, an, real, inicio, horizonte, paso };
+}
+function v_proy_live(state, ui, hoy) {
+  const r = calcularProyeccion(state, ui, hoy);
+  if (r.errores && r.errores.length) return r.errores.map((t) => aviso('error', esc(t))).join('');
+  const { proy, an } = r, cfg = state.config;
+  if (proy.errores.length) return proy.errores.map((t) => aviso('error', esc(t))).join('');
+  const s = proy.resumen;
+  const sup = `<ul>${proy.avisos.map((t) => `<li>${esc(t)}</li>`).join('')}<li>Punto de partida: ${r.real ? `última medición real (día ${r.inicio}, ${fmt(an.actual.peso)} g, ${fmt(an.actual.pob, 0)} org.)` : 'siembra'}. Paso de cálculo: ${r.paso} día(s); horizonte: ${fmt(r.horizonte, 0)} día(s).</li><li>Alimento por paso = biomasa al inicio del paso × tasa × días del paso.</li></ul>`;
+  const cards = [kpi('Peso promedio futuro', `${fmt(s.pesoFinal)} g`, `día ${fmt(s.diaFinal, 0)}`), kpi('Población viva estimada', fmt(s.pobFinal, 0)), kpi('Biomasa futura', `${fmt(s.biomasaFinal)} kg`),
+    kpi('Incremento de biomasa', `${fmt(s.incrementoTotal)} kg`), kpi('Consumo de alimento', s.alimentoTotal === null ? 'N/D' : `${fmt(s.alimentoTotal)} kg`, 'del horizonte'), kpi('F.C.A. proyectado', s.fcaProyectado === null ? 'N/D' : fmt(s.fcaProyectado)),
+    kpi('Producción estimada para cosecha', `${fmt(s.biomasaFinal)} kg`, 'biomasa al final del horizonte'),
+    kpi('Fecha estimada del peso objetivo', an.pesoObj ? (s.alcanzaObjetivo ? (s.fechaObjetivo ? fmtFecha(s.fechaObjetivo) : `día ${fmt(s.diaObjetivo, 0)}`) : 'no se alcanza en el horizonte') : 'sin peso objetivo', an.pesoObj ? `objetivo: ${fmt(an.pesoObj)} g` : 'define el peso objetivo en el estanque o la especie')].join('');
+  const filas = proy.rows.map((x, i) => `<tr><td class="izq">${x.fecha ? fmtFecha(x.fecha) : '—'}</td><td>${fmt(x.dia, 0)}</td><td>${fmt(x.peso)}</td><td>${fmt(x.pob, 0)}</td><td>${fmt(x.biomasa)}</td><td>${i ? fmt(x.incremento) : '—'}</td><td>${x.tasa === null ? '—' : fmt(x.tasa, 1)}</td><td>${x.alimento === null ? '—' : fmt(x.alimento)}</td><td>${x.fca === null ? '—' : fmt(x.fca)}</td></tr>`).join('');
+  const regPts = (f) => an.regs.filter((q) => q.dias !== null && f(q) !== null).map((q) => ({ x: q.dias, y: f(q) }));
+  const S = [{ nombre: 'Peso promedio', color: '#1f6f4a', tipo: 'real', puntos: [{ x: 0, y: an.pesoIni }].concat(regPts((q) => q.peso)) }, { nombre: 'Peso promedio', color: '#1d5fa8', tipo: 'proy', puntos: proy.rows.map((x) => ({ x: x.dia, y: x.peso })) }];
+  const B = [{ nombre: 'Biomasa', color: '#1f6f4a', tipo: 'real', puntos: (an.hist.bio0 !== null ? [{ x: 0, y: an.hist.bio0 }] : []).concat(regPts((q) => q.biomasa)) }, { nombre: 'Biomasa', color: '#1d5fa8', tipo: 'proy', puntos: proy.rows.map((x) => ({ x: x.dia, y: x.biomasa })) }];
+  return `<div class="aviso info"><b>Supuestos de esta proyección</b>${sup}</div><div class="grid kpis">${cards}</div>
+  <div class="grid g2" style="margin-top:12px"><div class="tarjeta"><h3>Peso: real vs proyectado</h3>${svgLineas(S, { titulo: 'Peso real y proyectado', ejeY: 'Peso (g)' })}</div><div class="tarjeta"><h3>Biomasa: real vs proyectada</h3>${svgLineas(B, { titulo: 'Biomasa real y proyectada', ejeY: 'Biomasa (kg)' })}</div></div>
+  <div class="tarjeta"><h3>Detalle de la proyección ${etq('proy')}</h3><div class="tabla-wrap"><table><thead><tr><th class="izq">Fecha</th><th>Día</th><th>Peso (g)</th><th>Población</th><th>Biomasa (kg)</th><th>Incremento (kg)</th><th>Tasa (%)</th><th>Alimento (kg)</th><th>F.C.A.</th></tr></thead><tbody>${filas}</tbody></table></div><p class="sub" style="margin-top:6px">Los valores de esta tabla son proyecciones (${esc(cfg.modoClase ? 'modo clase: población entera y kg a 2 decimales' : 'precisión completa')}), no datos reales.</p></div>`;
+}
+
+/* ---------- ECONOMÍA ---------- */
+function v_economia(state, ui, hoy) {
+  if (!state.estanques.length) return `<h2>Economía</h2>${sinEstanques()}`;
+  if (ui.sel === '__todos') ui.sel = state.estanques[0].id;
+  const e = state.estanques.find((x) => x.id === ui.sel) || state.estanques[0];
+  const cfg = state.config, ec = ui.eco;
+  const movCostos = state.costos.filter((c) => c.estanqueId === e.id).sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
+  const movIng = state.ingresos.filter((i) => i.estanqueId === e.id).sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
+  const lcos = movCostos.length ? `<div class="tabla-wrap"><table><thead><tr><th class="izq">Fecha</th><th class="izq">Categoría</th><th class="izq">Concepto</th><th>Monto (${esc(cfg.moneda)})</th><th class="izq">Tipo</th><th></th></tr></thead><tbody>${movCostos.map((c) => `<tr><td class="izq">${fmtFecha(c.fecha)}</td><td class="izq">${esc(c.categoria)}</td><td class="izq">${esc(c.concepto)} ${c.ejemplo ? etq('ej') : ''}</td><td class="${num(c.monto) < 0 ? 'neg' : ''}">${fmt(num(c.monto))}</td><td class="izq">${c.tipo === 'proyectado' ? etq('proy') : etq('real')}</td><td><button class="btn chico peligro" data-accion="eliminarCosto" data-id="${esc(c.id)}" aria-label="Eliminar costo ${esc(c.concepto)}">Eliminar</button></td></tr>`).join('')}</tbody></table></div>` : vacio('Sin costos registrados para este estanque.');
+  const ling = movIng.length ? `<div class="tabla-wrap"><table><thead><tr><th class="izq">Fecha</th><th class="izq">Concepto</th><th>Kg</th><th>Monto (${esc(cfg.moneda)})</th><th class="izq">Tipo</th><th></th></tr></thead><tbody>${movIng.map((i) => `<tr><td class="izq">${fmtFecha(i.fecha)}</td><td class="izq">${esc(i.concepto)} ${i.ejemplo ? etq('ej') : ''}</td><td>${i.kg === '' || i.kg === null || i.kg === undefined ? '—' : fmt(num(i.kg))}</td><td>${fmt(num(i.monto))}</td><td class="izq">${i.tipo === 'estimado' ? etq('est') : etq('real')}</td><td><button class="btn chico peligro" data-accion="eliminarIngreso" data-id="${esc(i.id)}" aria-label="Eliminar ingreso ${esc(i.concepto)}">Eliminar</button></td></tr>`).join('')}</tbody></table></div>` : vacio('Sin ingresos registrados para este estanque.');
+  return `<h2>Economía</h2><p class="sub">Costos, ingresos, ganancia o pérdida y rentabilidad por estanque y por ciclo. Moneda: <b>${esc(cfg.moneda)}</b> (cámbiala en Configuración).</p>
+  <div class="grid g3">${selEstanque(state, ui)}</div>
+  <div class="tarjeta"><h3>Precios del estanque</h3><div class="grid">
+   ${inpt({ etq: 'Precio de compra por organismo', unidad: cfg.moneda, valor: e.precioCompra, est: 'precioCompra', min: 0 })}
+   ${inpt({ etq: 'Precio del alimento por kg', unidad: cfg.moneda, valor: e.precioAlimento, est: 'precioAlimento', min: 0 })}
+   ${inpt({ etq: 'Precio de venta por kg', unidad: cfg.moneda, valor: e.precioVenta, est: 'precioVenta', min: 0, ayuda: 'Vacío = el de la especie.' })}</div>
+   <div class="grid" style="margin-top:8px"><div class="campo"><label><input type="checkbox" data-estchk="autoSemilla"${e.autoSemilla !== false ? ' checked' : ''} style="width:auto;min-height:0"> Calcular el costo de semilla automáticamente (organismos comprados × precio)</label></div>
+   <div class="campo"><label><input type="checkbox" data-estchk="autoAlimento"${e.autoAlimento !== false ? ' checked' : ''} style="width:auto;min-height:0"> Calcular el costo de alimento automáticamente (kg × precio)</label><span class="ayuda">Desactívalo si registras las compras de alimento a mano, para no contarlas dos veces.</span></div></div></div>
+  <div id="live">${v_eco_live(state, ui, hoy)}</div>
+  <div class="grid g2"><form id="form-costo" class="tarjeta" novalidate><h3>Registrar un costo</h3><div id="fc-errores" aria-live="assertive"></div><div class="grid">
+    ${inpt({ etq: 'Fecha *', tipo: 'date', valor: ec.cFecha, ui: 'eco.cFecha', req: true })}${selc({ etq: 'Categoría', opciones: CATEGORIAS_COSTO.map((c) => [c, c]), valor: ec.cCat, ui: 'eco.cCat' })}
+    ${inpt({ etq: 'Concepto', tipo: 'text', valor: ec.cConcepto, ui: 'eco.cConcepto' })}${inpt({ etq: 'Monto *', unidad: cfg.moneda, valor: ec.cMonto, ui: 'eco.cMonto', min: 0, req: true })}
+    ${selc({ etq: 'Tipo', opciones: [['real', 'Gasto realizado'], ['proyectado', 'Gasto proyectado']], valor: ec.cTipo, ui: 'eco.cTipo' })}</div><div class="acciones"><button class="btn" type="submit">Agregar costo</button></div></form>
+  <form id="form-ingreso" class="tarjeta" novalidate><h3>Registrar un ingreso</h3><div id="fi-errores" aria-live="assertive"></div><div class="grid">
+    ${inpt({ etq: 'Fecha *', tipo: 'date', valor: ec.iFecha, ui: 'eco.iFecha', req: true })}${inpt({ etq: 'Concepto', tipo: 'text', valor: ec.iConcepto, ui: 'eco.iConcepto' })}
+    ${inpt({ etq: 'Monto *', unidad: cfg.moneda, valor: ec.iMonto, ui: 'eco.iMonto', min: 0, req: true })}${inpt({ etq: 'Kg vendidos (opcional)', unidad: 'kg', valor: ec.iKg, ui: 'eco.iKg', min: 0 })}
+    ${selc({ etq: 'Tipo', opciones: [['real', 'Ingreso real (venta realizada)'], ['estimado', 'Ingreso estimado (otro)']], valor: ec.iTipo, ui: 'eco.iTipo' })}</div><div class="acciones"><button class="btn" type="submit">Agregar ingreso</button></div></form></div>
+  <div class="tarjeta"><h3>Costos registrados</h3>${lcos}</div><div class="tarjeta"><h3>Ingresos registrados</h3>${ling}</div>`;
+}
+function v_eco_live(state, ui, hoy) {
+  const e = state.estanques.find((x) => x.id === ui.sel) || state.estanques[0];
+  if (!e) return '';
+  const cfg = state.config, an = analizarEstanque(state, e, hoy), pr = proyeccionPlan(state, an, hoy), eco = economiaEstanque(state, an, hoy, pr);
+  const avisos = [];
+  if (an.precioVenta === null) avisos.push(aviso('adv', 'Falta el precio de venta por kg: no se pueden estimar ingresos ni el punto de equilibrio. Complétalo arriba o en la especie.'));
+  if (!pr) avisos.push(aviso('info', 'Sin plan de crecimiento no hay biomasa proyectada: los cálculos por kg usan la biomasa actual.'));
+  if (eco.ingEst === 0 && eco.ingReal === 0) avisos.push(aviso('info', 'Los ingresos son cero: el margen se muestra como N/D.'));
+  const md = (v) => (v === null ? 'N/D' : `${fmt(v * 100, 1)} %`);
+  const cards = [kpi('Costo real (ya gastado)', fmtMon(eco.costoReal, cfg), etq('real')), kpi('Costo proyectado (por gastar)', fmtMon(eco.costoProy, cfg), etq('proy')),
+    kpi('Costo total del ciclo', fmtMon(eco.costoTotal, cfg), 'real + proyectado'), kpi('Costo por organismo sembrado', fmtMon(eco.costoPorSembrado, cfg)), kpi('Costo por organismo sobreviviente', fmtMon(eco.costoPorSobreviviente, cfg)),
+    kpi('Costo de producción por kg', fmtMon(eco.costoPorKg, cfg), `sobre ${fmt(eco.kgProd)} kg ${eco.proyectado ? '(proyectados)' : '(biomasa actual)'}`),
+    kpi('Ingresos reales', fmtMon(eco.ingReal, cfg), `${etq('real')} ${eco.kgVendidos ? fmt(eco.kgVendidos) + ' kg vendidos' : ''}`), kpi('Ingresos estimados', fmtMon(eco.ingEst, cfg), etq('est')),
+    kpi('Ganancia / pérdida real', fmtMon(eco.ganReal, cfg), 'ingresos reales − costo real', eco.ganReal >= 0 ? 'pos' : 'neg'), kpi('Ganancia / pérdida estimada', fmtMon(eco.ganEst, cfg), 'ingresos estimados − costo total', eco.ganEst >= 0 ? 'pos' : 'neg'),
+    kpi('Margen real', md(eco.margenReal), 'ganancia ÷ ingresos'), kpi('Margen estimado', md(eco.margenEst), 'ganancia ÷ ingresos'),
+    kpi('Punto de equilibrio', eco.puntoEquilibrioKg === null ? 'N/D' : `${fmt(eco.puntoEquilibrioKg)} kg`, `ingresos necesarios: ${fmtMon(eco.costoTotal, cfg)}`), kpi('Precio mínimo de venta', eco.precioMinimo === null ? 'N/D' : `${fmtMon(eco.precioMinimo, cfg)} / kg`, 'para cubrir los costos')].join('');
+  const cat = CATEGORIAS_COSTO.map((c) => { const r = suma(eco.reales.filter((x) => x.categoria === c).map((x) => x.monto)), p = suma(eco.proyectados.filter((x) => x.categoria === c).map((x) => x.monto)); return r || p ? `<tr><td class="izq">${esc(c)}</td><td>${fmt(r)}</td><td>${fmt(p)}</td><td>${fmt(r + p)}</td></tr>` : ''; }).join('');
+  const auto = eco.auto.length ? `<p class="sub">Líneas calculadas automáticamente: ${eco.auto.map((l) => `${esc(l.categoria)} (${esc(l.concepto)}) = ${fmt(l.monto)}`).join('; ')}.</p>` : '';
+  return `${avisos.join('')}<div class="grid kpis" style="margin:10px 0">${cards}</div><div class="tarjeta"><h3>Costos por categoría (${esc(cfg.moneda)})</h3>${cat ? `<div class="tabla-wrap"><table><thead><tr><th class="izq">Categoría</th><th>Real</th><th>Proyectado</th><th>Total</th></tr></thead><tbody>${cat}</tbody><tfoot><tr><td class="izq">Total</td><td>${fmt(eco.costoReal)}</td><td>${fmt(eco.costoProy)}</td><td>${fmt(eco.costoTotal)}</td></tr></tfoot></table></div>` : vacio('Aún no hay costos.')}${auto}</div>`;
+}
+
+/* ---------- ALERTAS ---------- */
+function v_alertas(state, ui, hoy) {
+  const todas = evaluarAlertas(state, hoy);
+  const f = ui.alertas;
+  const lista = todas.filter((a) => (!f.nivel || a.nivel === f.nivel) && (!f.estanque || a.estanqueId === f.estanque));
+  const n = (nv) => todas.filter((a) => a.nivel === nv).length;
+  const nombres = { error: 'Error', advertencia: 'Advertencia', recomendacion: 'Recomendación' };
+  const tarjetas = lista.map((a) => `<div class="alerta ${a.nivel}" role="${a.nivel === 'error' ? 'alert' : 'note'}"><div class="nivel">${nombres[a.nivel]} · ${esc(a.codigo)}</div><dl><dt>Dato</dt><dd>${esc(a.dato)}</dd><dt>Por qué</dt><dd>${esc(a.porque)}</dd><dt>Valor evaluado</dt><dd>${esc(a.valor)}</dd><dt>Cómo corregirlo</dt><dd>${esc(a.corregir)}</dd></dl></div>`).join('');
+  return `<h2>Alertas</h2><p class="sub">Los datos sospechosos no se bloquean; solo se impiden cálculos matemáticamente inválidos. Los límites biológicos son configurables por especie.</p>
+  <div class="grid kpis" style="margin-bottom:10px">${kpi('Errores', fmt(n('error'), 0), 'impiden un cálculo confiable', n('error') ? 'neg' : '')}${kpi('Advertencias', fmt(n('advertencia'), 0), 'datos que conviene revisar')}${kpi('Recomendaciones', fmt(n('recomendacion'), 0), 'mejoras de manejo o registro')}</div>
+  <div class="fila-filtros">${selc({ etq: 'Nivel', opciones: [['', 'Todos'], ['error', 'Errores'], ['advertencia', 'Advertencias'], ['recomendacion', 'Recomendaciones']], valor: f.nivel, ui: 'alertas.nivel', rerender: true })}
+  ${selc({ etq: 'Estanque', opciones: [['', 'Todos']].concat(state.estanques.map((e) => [e.id, e.codigo])), valor: f.estanque, ui: 'alertas.estanque', rerender: true })}</div>
+  ${tarjetas || aviso('ok', todas.length ? 'No hay alertas con estos filtros.' : '✔ No hay alertas: los datos registrados son consistentes.')}`;
+}
+
+/* ---------- HISTORIAL ---------- */
+function v_historial(state, ui, hoy) {
+  if (!state.estanques.length) return `<h2>Historial</h2>${sinEstanques()}`;
+  if (ui.sel === '__todos') ui.sel = state.estanques[0].id;
+  const e = state.estanques.find((x) => x.id === ui.sel) || state.estanques[0];
+  const an = analizarEstanque(state, e, hoy), cfg = state.config;
+  const pts = an.pesoIni !== null && an.plan.pesos.length ? puntosPlan(an.plan, an.pesoIni) : null;
+  let prevF = e.fechaSiembra;
+  const filas = an.regs.map((r) => {
+    const pp = pts && r.dias !== null ? interpPlanTol(pts, r.dias) : null;
+    const dev = pp && r.peso !== null ? (r.peso - pp) / pp * 100 : null;
+    const cos = suma(state.costos.filter((c) => c.estanqueId === e.id && c.tipo !== 'proyectado' && c.fecha > (prevF || '') && c.fecha <= r.fecha).map((c) => num(c.monto)));
+    const ing = suma(state.ingresos.filter((c) => c.estanqueId === e.id && c.tipo !== 'estimado' && c.fecha > (prevF || '') && c.fecha <= r.fecha).map((c) => num(c.monto)));
+    prevF = r.fecha;
+    return `<tr><td class="izq">${fmtFecha(r.fecha)}${r.ejemplo ? ' ' + etq('ej') : ''}</td><td>${r.dias === null ? '—' : r.dias}</td><td>${fmt(r.peso)}</td><td>${pp === null ? '—' : fmt(pp)}</td><td class="${dev !== null && Math.abs(dev) > cfg.tolProyPct ? 'neg' : ''}">${dev === null ? '—' : fmt(dev, 1) + ' %'}</td><td>${fmt(r.pob, 0)}<br><small>${esc(r.pobFuente)}</small></td><td>${fmt(r.biomasa)}</td><td>${fmt(r.alimentoPeriodo)}</td><td>${fmt(r.alimentoAcum)}</td><td>${r.fcaPeriodo.valor === null ? 'N/D' : fmt(r.fcaPeriodo.valor)}</td><td>${r.fcaAcum.valor === null ? 'N/D' : fmt(r.fcaAcum.valor)}</td><td>${fmt(cos)}</td><td>${fmt(ing)}</td><td class="izq">${esc(r.obs)}</td><td class="izq"><button class="btn chico sec" data-accion="corregirMedicion" data-id="${esc(r.id)}">Corregir</button> <button class="btn chico peligro" data-accion="anularMedicion" data-id="${esc(r.id)}">Anular</button></td></tr>`;
+  }).join('');
+  const anul = state.muestreos.filter((m) => m.estanqueId === e.id && m.activo === false).map((m) => `<tr class="anulado"><td class="izq">${fmtFecha(m.fecha)}</td><td></td><td>${esc(m.peso)}</td><td colspan="11" class="izq">Registro anulado o reemplazado${m.reemplazadoPor ? ' por una corrección' : ''}; se conserva en el historial.</td><td></td></tr>`).join('');
+  return `<h2>Historial</h2><p class="sub">Las mediciones nunca se sobrescriben: al corregir una, la anterior queda anulada y visible aquí. El peso del plan permite comparar el crecimiento real con la proyección inicial.</p>
+  <div class="grid g3">${selEstanque(state, ui)}</div>
+  <div class="acciones" style="margin:10px 0"><button class="btn sec" data-accion="exportarHistorialCSV">Exportar este historial (CSV)</button><button class="btn sec" data-accion="reporte" data-id="${esc(e.id)}">Reporte imprimible</button></div>
+  ${an.regs.length || anul ? `<div class="tabla-wrap"><table><thead><tr><th class="izq">Fecha</th><th>Día</th><th>Peso real (g)</th><th>Peso del plan (g)</th><th>Desvío</th><th>Población</th><th>Biomasa (kg)</th><th>Alimento período (kg)</th><th>Alimento acum. (kg)</th><th>F.C.A. período</th><th>F.C.A. acum.</th><th>Costos del período</th><th>Ingresos del período</th><th class="izq">Observaciones</th><th class="izq">Acciones</th></tr></thead><tbody>${filas}${anul}</tbody></table></div>` : vacio('Este estanque aún no tiene mediciones.', '<button class="btn" data-accion="irProduccion">Registrar la primera medición</button>')}`;
+}
+
+/* ---------- CONFIGURACIÓN ---------- */
+function v_config(state, ui, hoy) {
+  const cfg = state.config;
+  const esp = state.especies.find((x) => x.id === ui.espSel) || state.especies[0];
+  const f = (k, etqt, o = {}) => inpt(Object.assign({ etq: etqt, name: k, valor: esp[k], id: `fs-${k}` }, o));
+  const faltan = [];
+  if (num(esp.pesoCosecha) === null) faltan.push('peso de cosecha');
+  if (num(esp.fcaEsperado) === null) faltan.push('F.C.A. esperado');
+  if (num(esp.precioKg) === null) faltan.push('precio de venta');
+  if (!(esp.tasasPeriodo || []).length) faltan.push('tasas de alimentación');
+  if (!(esp.pesosEsperados || []).length) faltan.push('pesos esperados');
+  if (num(esp.densidadMin) === null && num(esp.densidadMax) === null) faltan.push('límites de densidad');
+  const sv = num(esp.supervivencia) !== null ? num(esp.supervivencia) : supervivenciaDesde(esp.mortalidadPeriodo);
+  const ex = state.estanques.some((e) => e.ejemplo);
+  return `<h2>Configuración</h2><p class="sub">Especies y parámetros, ajustes generales y datos.</p>
+  <div class="tarjeta"><h3>Especies y parámetros</h3><div class="grid g3">${selc({ id: 'sel-esp', etq: 'Especie', opciones: state.especies.map((s) => [s.id, s.nombre]), valor: esp.id, ui: 'espSel', rerender: true })}</div>
+  <div class="acciones" style="margin:8px 0"><button class="btn sec" data-accion="nuevaEspecie">+ Nueva especie / variante</button><button class="btn sec" data-accion="duplicarEspecie">Duplicar esta</button><button class="btn peligro" data-accion="eliminarEspecie">Eliminar esta</button></div>
+  ${esp.fuente ? aviso('info', `<b>Origen de los valores:</b> ${esc(esp.fuente)}`) : ''}${faltan.length ? aviso('adv', `A <b>${esc(esp.nombre)}</b> le faltan: ${esc(faltan.join(', '))}. La aplicación no usa valores de otras especies.`) : ''}
+  <form id="form-especie" novalidate><div id="fs-errores" aria-live="assertive"></div><div class="grid">
+   ${f('nombre', 'Nombre', { tipo: 'text', req: true })}${f('sistema', 'Sistema de cultivo', { tipo: 'text', ayuda: 'Ej.: estanque de tierra, jaulas, RAS…' })}
+   ${f('pesoInicial', 'Peso inicial promedio', { unidad: 'g', min: 0 })}${f('pesoCosecha', 'Peso objetivo de cosecha', { unidad: 'g', min: 0 })}
+   ${f('supervivencia', 'Supervivencia estimada', { unidad: '%', min: 0, max: 100, ayuda: sv === null ? 'Vacía y sin mortalidades por período.' : `Si la dejas vacía se usa ${fmt(sv)} % (de las mortalidades por período).` })}
+   ${f('fcaEsperado', 'F.C.A. esperado', { min: 0 })}${f('cicloDias', 'Duración estimada del ciclo', { unidad: 'días', min: 0 })}
+   ${f('precioKg', `Precio de venta por kg (${cfg.moneda})`, { min: 0 })}${f('precioCompra', `Precio de compra por organismo (${cfg.moneda})`, { min: 0 })}
+   ${f('densidadMin', 'Densidad mínima de siembra', { unidad: 'org/m²', min: 0 })}${f('densidadMax', 'Densidad máxima de siembra', { unidad: 'org/m²', min: 0 })}
+   ${f('tasaMin', 'Tasa de alimentación mínima', { unidad: '%', min: 0 })}${f('tasaMax', 'Tasa de alimentación máxima', { unidad: '%', min: 0 })}
+   ${inpt({ etq: 'Días de cada período del plan', name: 'planDias', valor: esp.planDias, id: 'fs-planDias', min: 1 })}
+   ${inpt({ etq: 'Pesos esperados al final de cada período', name: 'pesosEsperados', tipo: 'text', unidad: 'g', valor: (esp.pesosEsperados || []).join(', '), id: 'fs-pesos', ayuda: 'Separados por comas' })}
+   ${inpt({ etq: 'Mortalidad de cada período', name: 'mortalidadPeriodo', tipo: 'text', unidad: '%', valor: (esp.mortalidadPeriodo || []).join(', '), id: 'fs-mort' })}
+   ${inpt({ etq: 'Tasa de alimentación de cada período', name: 'tasasPeriodo', tipo: 'text', unidad: '%', valor: (esp.tasasPeriodo || []).join(', '), id: 'fs-tasas' })}</div>
+   <div class="campo" style="margin-top:8px"><label for="fs-notas">Notas</label><textarea id="fs-notas" name="notas">${esc(esp.notas)}</textarea></div>
+   <div class="acciones"><button class="btn" type="submit">Guardar parámetros de la especie</button></div></form></div>
+  <div class="tarjeta"><h3>Ajustes generales</h3><div class="grid">
+   ${selc({ etq: 'Moneda', opciones: [['PEN', 'PEN · sol peruano'], ['USD', 'USD · dólar'], ['EUR', 'EUR · euro'], ['COP', 'COP · peso colombiano'], ['BRL', 'BRL · real']], valor: cfg.moneda, cfg: 'moneda' })}
+   ${selc({ etq: 'Redondeo de los cálculos', opciones: [['1', 'Modo clase: población entera y kg a 2 decimales (como las hojas)'], ['0', 'Precisión completa']], valor: cfg.modoClase ? '1' : '0', cfg: 'modoClase' })}
+   ${selc({ etq: 'F.C.A. acumulado', opciones: [['ganancia', 'Alimento ÷ incremento de biomasa'], ['cosecha', 'Alimento ÷ biomasa final (hoja del profesor)']], valor: cfg.fcaTotalMetodo, cfg: 'fcaTotalMetodo' })}
+   ${inpt({ etq: 'Recomendar un muestreo después de', unidad: 'días', valor: cfg.diasSinMuestreo, cfg: 'diasSinMuestreo', min: 1 })}
+   ${inpt({ etq: 'Alerta si el crecimiento diario cambia más de', unidad: '%', valor: cfg.tolDesvioPct, cfg: 'tolDesvioPct', min: 1 })}
+   ${inpt({ etq: 'Alerta si el peso real difiere del plan más de', unidad: '%', valor: cfg.tolProyPct, cfg: 'tolProyPct', min: 1 })}
+   ${inpt({ etq: 'Alerta si la biomasa pesada difiere de la calculada más de', unidad: '%', valor: cfg.tolBiomasaPct, cfg: 'tolBiomasaPct', min: 1 })}</div>
+   <p class="sub" style="margin-top:8px">Los umbrales de alerta son criterios de software editables, no valores biológicos.</p></div>
+  <div class="tarjeta"><h3>Datos, exportación y respaldo</h3><p class="sub">Los datos se guardan en este navegador. Descarga un respaldo de vez en cuando.</p>
+   <div class="acciones"><button class="btn" data-accion="exportarExcel">Exportar a Excel (.xls)</button><button class="btn sec" data-accion="exportarCSV" data-id="resumen">CSV · Resumen</button><button class="btn sec" data-accion="exportarCSV" data-id="estanques">CSV · Estanques</button><button class="btn sec" data-accion="exportarCSV" data-id="historial">CSV · Historial</button><button class="btn sec" data-accion="exportarCSV" data-id="costos">CSV · Costos</button><button class="btn sec" data-accion="exportarCSV" data-id="ingresos">CSV · Ingresos</button></div>
+   <div class="acciones"><button class="btn sec" data-accion="reporte" data-id="__todos">Reporte imprimible de la granja</button><button class="btn sec" data-accion="exportarJSON">Descargar respaldo (JSON)</button><label class="btn sec" style="cursor:pointer">Restaurar respaldo<input type="file" id="archivo-respaldo" accept="application/json,.json" style="display:none"></label></div>
+   <div class="acciones"><button class="btn sec" data-accion="cargarEjemplo">Cargar datos de ejemplo</button>${ex ? '<button class="btn sec" data-accion="quitarEjemplo">Quitar datos de ejemplo</button>' : ''}<button class="btn peligro" data-accion="borrarTodo">Borrar todos los datos</button></div></div>
+  <div class="tarjeta"><h3>Fórmulas utilizadas</h3><details class="plegable" open><summary>Ver las fórmulas</summary><div class="tabla-wrap"><table><tbody>${FORMULAS.map(([a, b]) => `<tr><td class="izq"><b>${esc(a)}</b></td><td class="izq"><span class="formula">${esc(b)}</span></td></tr>`).join('')}</tbody></table></div></details></div>`;
+}
+
+/* ---------- REPORTE IMPRIMIBLE ---------- */
+function v_reporte(state, id, hoy) {
+  const cfg = state.config;
+  const barra = '<div class="reporte-barra"><button class="btn" data-accion="imprimir">Imprimir / guardar como PDF</button><button class="btn sec" data-accion="cerrarReporte">Cerrar</button></div>';
+  const kv = (arr) => `<div class="tabla-wrap"><table><tbody>${arr.map(([a, b]) => `<tr><td class="izq"><b>${esc(a)}</b></td><td class="izq">${b}</td></tr>`).join('')}</tbody></table></div>`;
+  if (id === '__todos') {
+    const G = resumenGranja(state, hoy, {}), k = G.kpi;
+    return `${barra}<h1>Reporte de la granja</h1><p>Generado el ${fmtFecha(hoy)} · Moneda: ${esc(cfg.moneda)}</p>${kv([['Estanques registrados', fmt(k.total, 0)], ['Estanques activos', fmt(k.activos, 0)], ['Población inicial total', fmt(k.pobIni, 0)], ['Población viva', fmt(k.pobViva, 0)], ['Biomasa total actual', `${fmt(k.biomasa)} kg`], ['Alimento diario requerido', `${fmt(k.alimDiario)} kg`], ['Alimento acumulado', `${fmt(k.alimAcum)} kg`], ['F.C.A. de la granja (Σ alimento ÷ Σ incremento de biomasa)', k.fcaGranja === null ? 'N/D' : fmt(k.fcaGranja)], ['Costo acumulado', fmtMon(k.costo, cfg)], ['Ingresos estimados', fmtMon(k.ingEst, cfg)], ['Ganancia / pérdida proyectada', fmtMon(k.ganProy, cfg)]])}
+    <h3>Por estanque</h3><div class="tabla-wrap"><table><thead><tr><th class="izq">Estanque</th><th class="izq">Especie</th><th class="izq">Estado</th><th>Biomasa (kg)</th><th>Alimento acum. (kg)</th><th>F.C.A.</th><th>Costo total</th><th>Ganancia est.</th></tr></thead><tbody>${G.filas.map(({ an, eco }) => `<tr><td class="izq">${esc(an.e.codigo)}${an.e.ejemplo ? ' (EJEMPLO)' : ''}</td><td class="izq">${esc(an.esp ? an.esp.nombre : '—')}</td><td class="izq">${esc(an.e.estado)}</td><td>${fmt(an.actual.biomasa)}</td><td>${fmt(an.alimAcumReal)}</td><td>${an.fcaAcum === null ? 'N/D' : fmt(an.fcaAcum)}</td><td>${fmt(eco.costoTotal)}</td><td>${fmt(eco.ganEst)}</td></tr>`).join('')}</tbody></table></div>`;
+  }
+  const e = state.estanques.find((x) => x.id === id);
+  if (!e) return `${barra}<p>No se encontró el estanque.</p>`;
+  const an = analizarEstanque(state, e, hoy), pr = proyeccionPlan(state, an, hoy), eco = economiaEstanque(state, an, hoy, pr);
+  const al = evaluarAlertas(state, hoy).filter((a) => a.estanqueId === e.id);
+  const S = seriesEstanque(state, an, pr, hoy);
+  const reg = an.regs.map((r) => `<tr><td class="izq">${fmtFecha(r.fecha)}</td><td>${r.dias === null ? '—' : r.dias}</td><td>${fmt(r.peso)}</td><td>${fmt(r.pob, 0)}</td><td>${fmt(r.biomasa)}</td><td>${fmt(r.alimentoPeriodo)}</td><td>${r.fcaPeriodo.valor === null ? 'N/D' : fmt(r.fcaPeriodo.valor)}</td><td>${r.fcaAcum.valor === null ? 'N/D' : fmt(r.fcaAcum.valor)}</td></tr>`).join('');
+  return `${barra}<h1>Reporte del estanque ${esc(e.codigo)}${e.nombre ? ' · ' + esc(e.nombre) : ''}</h1><p>Generado el ${fmtFecha(hoy)} · ${e.ejemplo ? '<b>DATOS DE EJEMPLO, no son datos reales de producción.</b>' : 'Ciclo de crianza completo'}</p>
+  <h3>Datos del estanque</h3>${kv([['Especie', esc(an.esp ? an.esp.nombre : '—')], ['Estado', esc(e.estado)], ['Área', `${fmt(an.area, 0)} m²`], ['Volumen', an.vol ? `${fmt(an.vol, 0)} m³` : '—'], ['Fecha de siembra', fmtFecha(e.fechaSiembra)], ['Fecha estimada de cosecha', fmtFecha(e.fechaCosecha)], ['Población inicial', `${fmt(an.pobIni, 0)} (${an.dens === null ? '—' : fmt(an.dens)} org/m²)`], ['Organismos a comprar', fmt(an.comprados, 0)], ['Cal / fertilizante inicial (kg)', `${fmt(an.insumos.calKg)} / ${fmt(an.insumos.fertIniKg)}`]])}
+  <h3>Producción actual (${an.actual.fuente === 'real' ? 'real' : an.actual.fuente === 'estimado' ? 'estimada' : 'inicial'})</h3>${kv([['Población viva', fmt(an.actual.pob, 0)], ['Supervivencia', an.superv === null ? 'N/D' : `${fmt(an.superv)} %`], ['Peso promedio', `${fmt(an.actual.peso)} g`], ['Biomasa', `${fmt(an.actual.biomasa)} kg`], ['Alimento acumulado', `${fmt(an.alimAcumReal)} kg`], ['F.C.A. acumulado', an.fcaAcum === null ? 'N/D' : fmt(an.fcaAcum)]])}
+  <h3>Historial de mediciones</h3>${an.regs.length ? `<div class="tabla-wrap"><table><thead><tr><th class="izq">Fecha</th><th>Día</th><th>Peso (g)</th><th>Población</th><th>Biomasa (kg)</th><th>Alimento (kg)</th><th>F.C.A. período</th><th>F.C.A. acum.</th></tr></thead><tbody>${reg}</tbody></table></div>` : '<p>Sin mediciones.</p>'}
+  <div class="grid g2"><div>${svgLineas(S.peso, { titulo: 'Peso promedio', ejeY: 'Peso (g)' })}</div><div>${svgLineas(S.bio, { titulo: 'Biomasa', ejeY: 'Biomasa (kg)' })}</div></div>
+  <h3>Economía (${esc(cfg.moneda)})</h3>${kv([['Costo real / proyectado / total', `${fmt(eco.costoReal)} / ${fmt(eco.costoProy)} / ${fmt(eco.costoTotal)}`], ['Ingresos reales / estimados', `${fmt(eco.ingReal)} / ${fmt(eco.ingEst)}`], ['Ganancia real / estimada', `${fmt(eco.ganReal)} / ${fmt(eco.ganEst)}`], ['Margen real / estimado', `${eco.margenReal === null ? 'N/D' : fmt(eco.margenReal * 100, 1) + ' %'} / ${eco.margenEst === null ? 'N/D' : fmt(eco.margenEst * 100, 1) + ' %'}`], ['Costo por kg', eco.costoPorKg === null ? 'N/D' : fmt(eco.costoPorKg)], ['Punto de equilibrio', eco.puntoEquilibrioKg === null ? 'N/D' : `${fmt(eco.puntoEquilibrioKg)} kg`], ['Precio mínimo de venta', eco.precioMinimo === null ? 'N/D' : `${fmt(eco.precioMinimo)} / kg`]])}
+  <h3>Alertas</h3>${al.length ? al.map((a) => `<div class="alerta ${a.nivel}"><b>${esc(a.nivel)}:</b> ${esc(a.dato)} — ${esc(a.porque)} (${esc(a.valor)}). ${esc(a.corregir)}</div>`).join('') : '<p>Sin alertas.</p>'}
+  <p class="sub">Fórmulas y supuestos: ver Configuración › Fórmulas. Las proyecciones dependen del plan configurado.</p>`;
+}
+/*</PURE3>*/
+
+/* ==========================================================================
+   INTERFAZ (DOM): render, eventos, guardado, exportación.
+   ========================================================================== */
+const STORE_KEY = 'calculadora-acuicola-v1';
+const TABS = [['resumen', 'Resumen'], ['estanques', 'Estanques'], ['produccion', 'Producción'], ['alimentacion', 'Alimentación'], ['proyecciones', 'Proyecciones'], ['economia', 'Economía'], ['alertas', 'Alertas'], ['historial', 'Historial'], ['config', 'Configuración']];
+const VISTAS = { resumen: v_resumen, estanques: v_estanques, produccion: v_produccion, alimentacion: v_alimentacion, proyecciones: v_proyecciones, economia: v_economia, alertas: v_alertas, historial: v_historial, config: v_config };
+const LIVE = { produccion: v_produccion_live, alimentacion: v_alim_live, proyecciones: v_proy_live, economia: v_eco_live };
+const $ = (s) => document.querySelector(s);
+
+let almacenamientoPersistente = true;
+let backend;
+try { backend = window.localStorage; backend.setItem('__prueba', '1'); backend.removeItem('__prueba'); }
+catch (err) {
+  almacenamientoPersistente = false;
+  const mem = {};
+  backend = { getItem: (k) => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = v; } };
+}
+const store = crearStore(backend, STORE_KEY);
+let state, ui, alertasCache = [];
+
+const medVacia = () => ({ fecha: hoyISO(), peso: '', poblacion: '', muertos: '', alimentoSuministrado: '', alimentoConsumido: '', biomasaRetirada: '', biomasaMedida: '', obs: '' });
+const ecoVacia = () => ({ cFecha: hoyISO(), cCat: CATEGORIAS_COSTO[0], cConcepto: '', cMonto: '', cTipo: 'real', iFecha: hoyISO(), iConcepto: '', iMonto: '', iKg: '', iTipo: 'real' });
+const uiInicial = () => ({ tab: 'resumen', sel: null, filtro: { especie: '', estado: '', desde: '', hasta: '' }, graf: null, formEst: null, formEstNuevo: false, vinculo: 'poblacionInicial',
+  med: medVacia(), medCorrige: null, ali: { tasa: '', raciones: '3' }, fcaMan: { sum: '', cons: '', bioIni: '', bioAct: '', ret: '', dias: '' }, proy: null, proyFor: null,
+  eco: ecoVacia(), alertas: { nivel: '', estanque: '' }, espSel: null });
+
+/* ---------- utilidades de interfaz ---------- */
+let toastT = null;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg; t.classList.add('ver');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('ver'), 3200);
+}
+function confirmar(titulo, texto, ok) {
+  return new Promise((res) => {
+    const d = $('#dlg');
+    if (typeof d.showModal !== 'function') { res(window.confirm(`${titulo}\n${texto}`)); return; }
+    $('#dlg-titulo').textContent = titulo; $('#dlg-texto').textContent = texto; $('#dlg-ok').textContent = ok || 'Confirmar';
+    d.returnValue = '';
+    d.addEventListener('close', () => res(d.returnValue === 'si'), { once: true });
+    d.showModal();
+  });
+}
+function descargar(nombre, contenido, mime) {
+  const blob = new Blob([contenido], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nombre; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 800);
+}
+function guardar() {
+  const r = store.guardar(state);
+  const el = $('#estado-guardado');
+  if (r.ok) {
+    const h = new Date();
+    el.textContent = `${almacenamientoPersistente ? 'Guardado' : 'Solo en esta sesión'} · ${String(h.getHours()).padStart(2, '0')}:${String(h.getMinutes()).padStart(2, '0')}:${String(h.getSeconds()).padStart(2, '0')}`;
+  } else { el.textContent = 'No se pudo guardar'; toast('No se pudo guardar los datos en este navegador.'); }
+  return r.ok;
+}
+function mostrarErrores(idCont, lista) {
+  const c = document.getElementById(idCont);
+  if (!c) return;
+  c.innerHTML = lista.length ? `<div class="aviso error" role="alert"><b>Revisa estos datos:</b><ul>${lista.map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>` : '';
+  if (lista.length) c.scrollIntoView({ block: 'center' });
+}
+
+/* ---------- render ---------- */
+function actualizarContadores() {
+  alertasCache = evaluarAlertas(state, hoyISO());
+  const ne = alertasCache.filter((a) => a.nivel === 'error').length, nw = alertasCache.filter((a) => a.nivel === 'advertencia').length;
+  const b = document.getElementById('tab-alertas');
+  if (!b) return;
+  b.innerHTML = `Alertas${ne ? `<span class="cuenta" aria-label="${ne} errores">${ne}</span>` : nw ? `<span class="cuenta adv" aria-label="${nw} advertencias">${nw}</span>` : ''}`;
+}
+function render() {
+  if (ui.sel !== '__todos' && !state.estanques.some((e) => e.id === ui.sel)) ui.sel = state.estanques.length ? state.estanques[0].id : null;
+  if (ui.tab !== 'resumen' && ui.sel === '__todos' && !['alimentacion'].includes(ui.tab)) ui.sel = state.estanques.length ? state.estanques[0].id : null;
+  $('#tabs').innerHTML = TABS.map(([k, t]) => `<button role="tab" id="tab-${k}" aria-selected="${ui.tab === k}" aria-controls="principal" data-tab="${k}" tabindex="${ui.tab === k ? 0 : -1}">${t}</button>`).join('');
+  try { $('#principal').innerHTML = VISTAS[ui.tab](state, ui, hoyISO()); }
+  catch (err) { console.error(err); $('#principal').innerHTML = `<div class="aviso error" role="alert"><b>No se pudo mostrar esta sección.</b> ${esc(err.message)}</div>`; }
+  actualizarContadores();
+  if (ui.tab === 'estanques' && ui.formEst) actualizarFormEstanque();
+}
+function refrescarLive() {
+  const f = LIVE[ui.tab], c = document.getElementById('live');
+  if (f && c) { try { c.innerHTML = f(state, ui, hoyISO()); } catch (err) { console.error(err); c.innerHTML = `<div class="aviso error">${esc(err.message)}</div>`; } }
+  actualizarContadores();
+}
+function irA(tab) { ui.tab = tab; render(); window.scrollTo(0, 0); }
+
+/* ---------- formulario de estanque ---------- */
+function actualizarFormEstanque(origen) {
+  const f = document.getElementById('form-estanque');
+  if (!f) return;
+  const g = (n) => f.elements[n];
+  let area = num(g('area').value);
+  if (area !== null && g('areaUnidad').value === 'ha') area *= 10000;
+  if (area > 0) {
+    if (origen === 'densidad' || (origen === 'area' && ui.vinculo === 'densidad')) {
+      const d = num(g('densidad').value);
+      if (d !== null) g('poblacionInicial').value = rEnt(d * area);
+    } else if (origen === 'poblacionInicial' || origen === 'area' || origen === 'areaUnidad') {
+      const n = num(g('poblacionInicial').value);
+      if (n !== null) g('densidad').value = +(n / area).toFixed(4);
+    }
+  }
+  if (origen === 'densidad' || origen === 'poblacionInicial') ui.vinculo = origen;
+  const prof = num(g('profundidad').value);
+  document.getElementById('fe-volumen').value = area > 0 && prof > 0 ? fmt(area * prof, 1) : '';
+  const n = num(g('poblacionInicial').value), mt = num(g('mortTransporte').value);
+  document.getElementById('fe-comprados').value = n !== null && mt !== null && mt >= 0 && mt < 100 ? fmt(techo(n / (1 - mt / 100)), 0) : (n !== null && g('mortTransporte').value === '' ? fmt(n, 0) : '');
+  const k = area > 0 ? area / 10000 : null;
+  const p = (nm) => { const v = num(g(nm).value); return k !== null && v !== null ? `${fmt(v * k)} kg` : '—'; };
+  document.getElementById('fe-insumos').value = k === null ? '' : `cal ${p('calKgHa')} · fert. inicial ${p('fertIniKgHa')} · fert. mensual ${p('fertMensKgHa')}`;
+}
+function leerFormEstanque() {
+  const f = document.getElementById('form-estanque');
+  const fd = new FormData(f), o = {};
+  fd.forEach((v, k) => { o[k] = typeof v === 'string' ? v.trim() : v; });
+  const e = Object.assign({}, ui.formEst, o);
+  for (const k of ['area', 'profundidad', 'poblacionInicial', 'densidad', 'pesoInicial', 'pesoObjetivo', 'mortTransporte', 'calKgHa', 'fertIniKgHa', 'fertMensKgHa', 'precioCompra', 'precioAlimento', 'precioVenta']) {
+    const raw = e[k];
+    e[k] = raw === '' || raw === undefined ? '' : (num(raw) === null ? raw : num(raw));
+  }
+  return e;
+}
+function guardarEstanque() {
+  const e = leerFormEstanque();
+  const errores = validarEstanque(e, state.estanques);
+  mostrarErrores('fe-errores', errores);
+  if (errores.length) return;
+  if (e.poblacionInicial === '' && e.densidad !== '' && num(e.area) > 0) e.poblacionInicial = rEnt(e.densidad * (e.areaUnidad === 'ha' ? e.area * 10000 : e.area));
+  const i = state.estanques.findIndex((x) => x.id === e.id);
+  if (i >= 0) state.estanques[i] = e; else state.estanques.push(e);
+  ui.sel = e.id; ui.formEst = null; ui.proyFor = null;
+  guardar(); toast(`Estanque ${e.codigo} guardado.`); render();
+}
+
+/* ---------- registros ---------- */
+function guardarMedicion() {
+  const e = state.estanques.find((x) => x.id === ui.sel);
+  if (!e) return;
+  const m = ui.med;
+  const errores = validarMedicion(m, e);
+  mostrarErrores('fm-errores', errores);
+  if (errores.length) return;
+  const nuevo = { id: uid('mu'), estanqueId: e.id, fecha: m.fecha, peso: num(m.peso), poblacion: num(m.poblacion) === null ? '' : num(m.poblacion), muertos: num(m.muertos) === null ? '' : num(m.muertos),
+    alimentoSuministrado: num(m.alimentoSuministrado) === null ? '' : num(m.alimentoSuministrado), alimentoConsumido: num(m.alimentoConsumido) === null ? '' : num(m.alimentoConsumido),
+    biomasaRetirada: num(m.biomasaRetirada) === null ? '' : num(m.biomasaRetirada), biomasaMedida: num(m.biomasaMedida) === null ? '' : num(m.biomasaMedida), obs: m.obs || '', activo: true, creado: Date.now() };
+  if (ui.medCorrige) {
+    const viejo = state.muestreos.find((x) => x.id === ui.medCorrige);
+    if (viejo) { viejo.activo = false; viejo.reemplazadoPor = nuevo.id; }
+    nuevo.corrige = ui.medCorrige;
+  }
+  state.muestreos.push(nuevo);
+  ui.med = medVacia(); ui.medCorrige = null;
+  guardar(); toast('Medición guardada en el historial.'); render();
+}
+function agregarCosto() {
+  const c = ui.eco;
+  const mov = { fecha: c.cFecha, monto: c.cMonto };
+  const errores = validarMovimiento(mov);
+  mostrarErrores('fc-errores', errores);
+  if (errores.length) return;
+  state.costos.push({ id: uid('co'), estanqueId: ui.sel, fecha: c.cFecha, categoria: c.cCat, concepto: c.cConcepto, monto: num(c.cMonto), tipo: c.cTipo, creado: Date.now() });
+  ui.eco.cMonto = ''; ui.eco.cConcepto = '';
+  guardar(); toast('Costo agregado.'); render();
+}
+function agregarIngreso() {
+  const c = ui.eco;
+  const errores = validarMovimiento({ fecha: c.iFecha, monto: c.iMonto });
+  if (c.iKg !== '' && (num(c.iKg) === null || num(c.iKg) < 0)) errores.push('Los kg vendidos deben ser un número mayor o igual que cero.');
+  mostrarErrores('fi-errores', errores);
+  if (errores.length) return;
+  state.ingresos.push({ id: uid('in'), estanqueId: ui.sel, fecha: c.iFecha, concepto: c.iConcepto, monto: num(c.iMonto), kg: num(c.iKg) === null ? '' : num(c.iKg), tipo: c.iTipo, creado: Date.now() });
+  ui.eco.iMonto = ''; ui.eco.iConcepto = ''; ui.eco.iKg = '';
+  guardar(); toast('Ingreso agregado.'); render();
+}
+function guardarEspecie() {
+  const esp = state.especies.find((x) => x.id === (ui.espSel || state.especies[0].id));
+  const f = document.getElementById('form-especie');
+  const g = {};
+  new FormData(f).forEach((v, k) => { g[k] = typeof v === 'string' ? v.trim() : v; });
+  const errores = validarEspecie(g);
+  for (const k of ['pesosEsperados', 'mortalidadPeriodo', 'tasasPeriodo']) if (parseLista(g[k]) === null) errores.push('Las listas por período deben ser números separados por comas.');
+  if (parseLista(g.mortalidadPeriodo) && parseLista(g.mortalidadPeriodo).some((v) => v < 0 || v >= 100)) errores.push('Las mortalidades por período deben estar entre 0 y 100 %.');
+  if (parseLista(g.tasasPeriodo) && parseLista(g.tasasPeriodo).some((v) => v < 0)) errores.push('Las tasas por período no pueden ser negativas.');
+  mostrarErrores('fs-errores', errores);
+  if (errores.length) return;
+  for (const k of ['pesoInicial', 'pesoCosecha', 'supervivencia', 'fcaEsperado', 'cicloDias', 'precioKg', 'precioCompra', 'densidadMin', 'densidadMax', 'tasaMin', 'tasaMax']) esp[k] = num(g[k]);
+  esp.nombre = g.nombre; esp.sistema = g.sistema; esp.notas = g.notas; esp.planDias = num(g.planDias) || 30;
+  esp.pesosEsperados = parseLista(g.pesosEsperados); esp.mortalidadPeriodo = parseLista(g.mortalidadPeriodo); esp.tasasPeriodo = parseLista(g.tasasPeriodo);
+  ui.proyFor = null;
+  guardar(); toast(`Parámetros de ${esp.nombre} guardados.`); render();
+}
+
+/* ---------- acciones ---------- */
+const ACCIONES = {
+  nuevoEstanque() { ui.formEst = estanqueNuevo(state.especies[0] ? state.especies[0].id : ''); ui.formEstNuevo = true; irA('estanques'); },
+  editarEstanque(id) { const e = state.estanques.find((x) => x.id === id); ui.formEst = JSON.parse(JSON.stringify(e)); ui.formEstNuevo = false; ui.tab = 'estanques'; render(); window.scrollTo(0, 0); },
+  cancelarEstanque() { ui.formEst = null; render(); },
+  abrirEstanque(id) { ui.sel = id; irA('produccion'); },
+  async eliminarEstanque(id) {
+    const e = state.estanques.find((x) => x.id === id);
+    const nm = state.muestreos.filter((m) => m.estanqueId === id).length;
+    if (!(await confirmar(`¿Eliminar el estanque ${e.codigo}?`, `Se borrarán también sus ${nm} mediciones, costos e ingresos. Esta acción no se puede deshacer.`, 'Eliminar'))) return;
+    state.estanques = state.estanques.filter((x) => x.id !== id);
+    state.muestreos = state.muestreos.filter((x) => x.estanqueId !== id);
+    state.costos = state.costos.filter((x) => x.estanqueId !== id);
+    state.ingresos = state.ingresos.filter((x) => x.estanqueId !== id);
+    guardar(); toast(`Estanque ${e.codigo} eliminado.`); render();
+  },
+  corregirMedicion(id) {
+    const r = state.muestreos.find((x) => x.id === id);
+    ui.sel = r.estanqueId; ui.medCorrige = id;
+    ui.med = { fecha: r.fecha, peso: r.peso, poblacion: r.poblacion, muertos: r.muertos, alimentoSuministrado: r.alimentoSuministrado, alimentoConsumido: r.alimentoConsumido, biomasaRetirada: r.biomasaRetirada, biomasaMedida: r.biomasaMedida, obs: r.obs || '' };
+    irA('produccion');
+  },
+  cancelarCorreccion() { ui.medCorrige = null; ui.med = medVacia(); render(); },
+  async anularMedicion(id) {
+    const r = state.muestreos.find((x) => x.id === id);
+    if (!(await confirmar('¿Anular esta medición?', `La medición del ${fmtFecha(r.fecha)} dejará de usarse en los cálculos, pero se conserva en el historial.`, 'Anular'))) return;
+    r.activo = false; guardar(); toast('Medición anulada.'); render();
+  },
+  async eliminarCosto(id) { if (!(await confirmar('¿Eliminar este costo?', 'Se quitará del estanque. Esta acción no se puede deshacer.', 'Eliminar'))) return; state.costos = state.costos.filter((x) => x.id !== id); guardar(); render(); },
+  async eliminarIngreso(id) { if (!(await confirmar('¿Eliminar este ingreso?', 'Se quitará del estanque. Esta acción no se puede deshacer.', 'Eliminar'))) return; state.ingresos = state.ingresos.filter((x) => x.id !== id); guardar(); render(); },
+  guardarPlan() {
+    const e = state.estanques.find((x) => x.id === ui.sel), p = ui.proy;
+    const pesos = parseLista(p.pesos), mort = parseLista(p.mort), tasas = parseLista(p.tasas);
+    if (pesos === null || mort === null || tasas === null || !(num(p.planDias) > 0)) { toast('Revisa las listas y los días del plan antes de guardarlo.'); return; }
+    e.plan = { planDias: num(p.planDias), pesos, mortalidades: mort, tasas };
+    guardar(); toast('Plan guardado en el estanque.'); render();
+  },
+  restaurarPlan() { const e = state.estanques.find((x) => x.id === ui.sel); e.plan = null; ui.proyFor = null; guardar(); toast('Plan restaurado al de la especie.'); render(); },
+  nuevaEspecie() { const s = especieVacia('Nueva especie'); state.especies.push(s); ui.espSel = s.id; guardar(); render(); },
+  duplicarEspecie() { const o = state.especies.find((x) => x.id === (ui.espSel || state.especies[0].id)); const c = JSON.parse(JSON.stringify(o)); c.id = uid('esp'); c.nombre = `${o.nombre} (copia)`; state.especies.push(c); ui.espSel = c.id; guardar(); render(); },
+  async eliminarEspecie() {
+    const o = state.especies.find((x) => x.id === (ui.espSel || state.especies[0].id));
+    if (state.estanques.some((e) => e.especieId === o.id)) { toast(`«${o.nombre}» está en uso por algún estanque: cámbialo antes de eliminarla.`); return; }
+    if (state.especies.length <= 1) { toast('Debe quedar al menos una especie.'); return; }
+    if (!(await confirmar(`¿Eliminar la especie ${o.nombre}?`, 'Se perderán sus parámetros.', 'Eliminar'))) return;
+    state.especies = state.especies.filter((x) => x.id !== o.id); ui.espSel = null; guardar(); render();
+  },
+  cargarEjemplo() {
+    if (state.estanques.some((e) => e.ejemplo)) { toast('Los datos de ejemplo ya están cargados.'); return; }
+    agregarEjemplo(state); guardar(); toast('Datos de ejemplo cargados (marcados como EJEMPLO).'); ui.tab = 'resumen'; render();
+  },
+  async quitarEjemplo() { if (!(await confirmar('¿Quitar los datos de ejemplo?', 'Solo se borran los registros marcados como EJEMPLO.', 'Quitar'))) return; quitarEjemplo(state); guardar(); render(); },
+  async borrarTodo() {
+    if (!(await confirmar('¿Borrar TODOS los datos?', 'Se eliminarán estanques, mediciones, costos, ingresos y especies personalizadas. Descarga un respaldo antes si lo necesitas.', 'Borrar todo'))) return;
+    state = estadoInicial(); ui = uiInicial(); guardar(); render();
+  },
+  exportarCSV(id) {
+    const hoja = tablasExport(state, hoyISO()).find((h) => h.nombre.toLowerCase() === id);
+    descargar(`acuicola_${id}_${hoyISO()}.csv`, aCSV(hoja.filas), 'text/csv;charset=utf-8');
+  },
+  exportarHistorialCSV() {
+    const e = state.estanques.find((x) => x.id === ui.sel);
+    const hoja = tablasExport(state, hoyISO()).find((h) => h.nombre === 'Historial');
+    descargar(`acuicola_historial_${e.codigo}_${hoyISO()}.csv`, aCSV([hoja.filas[0]].concat(hoja.filas.slice(1).filter((f) => f[0] === e.codigo))), 'text/csv;charset=utf-8');
+  },
+  exportarExcel() { descargar(`acuicola_${hoyISO()}.xls`, aExcelXML(tablasExport(state, hoyISO())), 'application/vnd.ms-excel'); },
+  exportarJSON() { descargar(`acuicola_respaldo_${hoyISO()}.json`, JSON.stringify(state, null, 2), 'application/json'); },
+  reporte(id) { document.getElementById('reporte').innerHTML = v_reporte(state, id, hoyISO()); document.body.classList.add('ver-reporte'); document.getElementById('reporte').scrollTop = 0; },
+  cerrarReporte() { document.body.classList.remove('ver-reporte'); },
+  imprimir() { window.print(); },
+  irProduccion() { irA('produccion'); }
+};
+
+/* ---------- eventos ---------- */
+document.addEventListener('click', (ev) => {
+  const t = ev.target.closest('[data-tab],[data-accion]');
+  if (!t) return;
+  if (t.dataset.tab) { irA(t.dataset.tab); const b = document.getElementById(`tab-${t.dataset.tab}`); if (b) b.focus(); return; }
+  ev.preventDefault();
+  const fn = ACCIONES[t.dataset.accion];
+  if (fn) fn(t.dataset.id);
+});
+document.addEventListener('keydown', (ev) => {
+  const b = ev.target.closest && ev.target.closest('nav.tabs button');
+  if (!b || (ev.key !== 'ArrowRight' && ev.key !== 'ArrowLeft')) return;
+  const ks = TABS.map((x) => x[0]), i = ks.indexOf(b.dataset.tab);
+  const n = ks[(i + (ev.key === 'ArrowRight' ? 1 : ks.length - 1)) % ks.length];
+  irA(n); document.getElementById(`tab-${n}`).focus();
+});
+document.addEventListener('input', (ev) => {
+  const el = ev.target;
+  if (el.closest('#form-estanque')) { if (el.name) actualizarFormEstanque(el.name); return; }
+  if (el.dataset.ui) {
+    setPath(ui, el.dataset.ui, el.type === 'checkbox' ? el.checked : el.value);
+    if (!el.dataset.rerender && el.tagName !== 'SELECT') refrescarLive();
+    return;
+  }
+  if (el.dataset.est) {
+    const e = state.estanques.find((x) => x.id === ui.sel);
+    if (e) { e[el.dataset.est] = el.value; guardar(); refrescarLive(); }
+  }
+});
+document.addEventListener('change', (ev) => {
+  const el = ev.target;
+  if (el.id === 'archivo-respaldo') { importarRespaldo(el.files[0]); el.value = ''; return; }
+  if (el.dataset.estchk) { const e = state.estanques.find((x) => x.id === ui.sel); if (e) { e[el.dataset.estchk] = el.checked; guardar(); refrescarLive(); } return; }
+  if (el.dataset.cfg) {
+    const k = el.dataset.cfg;
+    state.config[k] = k === 'modoClase' ? el.value === '1' : (el.type === 'number' ? (num(el.value) ?? state.config[k]) : el.value);
+    guardar(); toast('Ajuste guardado.'); ui.proyFor = null; render(); return;
+  }
+  if (el.dataset.ui && (el.dataset.rerender || el.tagName === 'SELECT')) {
+    setPath(ui, el.dataset.ui, el.value);
+    if (el.dataset.ui === 'sel') { ui.ali.tasa = ''; ui.medCorrige = null; ui.med = medVacia(); ui.proyFor = null; }
+    render();
+  }
+});
+document.addEventListener('submit', (ev) => {
+  if (ev.target.closest('dialog')) return;   // el cuadro de confirmación se cierra solo (method="dialog")
+  ev.preventDefault();
+  const id = ev.target.id;
+  if (id === 'form-estanque') guardarEstanque();
+  else if (id === 'form-medicion') guardarMedicion();
+  else if (id === 'form-costo') agregarCosto();
+  else if (id === 'form-ingreso') agregarIngreso();
+  else if (id === 'form-especie') guardarEspecie();
+});
+async function importarRespaldo(archivo) {
+  if (!archivo) return;
+  try {
+    const obj = JSON.parse(await archivo.text());
+    const err = validarRespaldo(obj);
+    if (err) { toast(err); return; }
+    if (!(await confirmar('¿Restaurar este respaldo?', 'Reemplazará todos los datos actuales.', 'Restaurar'))) return;
+    state = normalizarEstado(obj); ui = uiInicial(); guardar(); toast('Respaldo restaurado.'); render();
+  } catch (e) { toast('No se pudo leer el archivo de respaldo.'); }
+}
+
+/* ---------- arranque ---------- */
+(function iniciar() {
+  const r = store.cargar();
+  state = r.state; ui = uiInicial();
+  if (r.error) toast('No se pudieron leer los datos guardados; se inició con datos vacíos.');
+  if (!almacenamientoPersistente) toast('Este navegador no permite guardar datos: se conservarán solo mientras la pestaña esté abierta.');
+  render();
+  const el = $('#estado-guardado');
+  el.textContent = r.nuevo ? 'Sin datos guardados todavía' : 'Datos cargados';
+  window.__acuicola = { get estado() { return state; }, get ui() { return ui; } };
+})();
+
+</script>
+</body>
+</html>
